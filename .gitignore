@@ -1,0 +1,10 @@
+node_modules
+dist
+*.local
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Dados de alunos não vão para o repositório (LGPD). Veja dados/README.md.
+dados/*.csv
