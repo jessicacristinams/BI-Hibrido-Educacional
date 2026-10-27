@@ -15,13 +15,10 @@ navegador ◄── GET /api/painel/alunos?curso=…&periodos=…  ◄── Fas
           ◄── GET /api/painel/disciplinas?…                (filtra e agrega no servidor)
 ```
 
-### Por que assim (LGPD e escalabilidade)
+### Arquitetura (LGPD e escalabilidade)
 
-Antes, o navegador baixava ~18 MB de JSON com uma linha por aluno (código, curso,
-situação, notas) e o CSV bruto ficava publicado em `public/`. Qualquer visitante
-podia baixar os dados individuais. Agora:
-
-- o CSV fica em `dados/`, fora da pasta pública e fora do Git, e os JSONs por aluno deixaram de existir;
+- os dados dos alunos ficam só no servidor: o CSV fica em `dados/`, fora da pasta
+  pública e fora do Git;
 - a API devolve só contagens, taxas, médias e rankings do recorte pedido, nunca
   o código de um aluno (há teste automatizado para isso);
 - há uma opção, desligada por padrão, para ocultar números de grupos pequenos (veja **Dados e LGPD**);
@@ -32,7 +29,7 @@ podia baixar os dados individuais. Agora:
 
 ## Como rodar
 
-O dashboard agora depende do backend. São dois terminais:
+O dashboard depende do backend. São dois terminais:
 
 ```bash
 # uma vez
@@ -130,9 +127,6 @@ como **dados pessoais pseudonimizados** (LGPD, art. 13 §4º), e não como dados
   mostra a nota desse aluno a quem tem acesso. Por isso o sistema deve ficar restrito a pessoas
   autorizadas. Se a supressão for ligada, ela vale só para os painéis: o chat continua
   respondendo com os valores reais.
-- Este repositório nunca versionou os dados reais. O projeto começou no repositório
-  `Projeto-Sigadash.v2`, cujo histórico continha a amostra real; por isso o código foi
-  publicado aqui sem aquele histórico.
 
 ## Estrutura
 

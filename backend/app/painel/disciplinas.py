@@ -1,4 +1,4 @@
-"""Painel de Disciplinas: filtros e agregações feitos no servidor (antes rodavam no navegador, sobre JSONs públicos).
+"""Painel de Disciplinas: filtros e agregações feitos no servidor.
 
 Aprovado/reprovado já vêm resolvidos da mineração (DISPENSADO conta como aprovado; as demais
 situações só contam como matrícula). Médias de nota e de faltas ignoram valores ausentes.

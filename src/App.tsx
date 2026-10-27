@@ -447,7 +447,7 @@ function EmptyChart({ children }: { children: ReactNode }) {
   return <div style={{ fontSize: 12, color: GRAY_400, padding: "40px 0", textAlign: "center" }}>{children}</div>;
 }
 
-// ── Rankings de disciplinas (recebe os 10 itens já prontos de disciplinasView.ts) ──
+// ── Rankings de disciplinas (recebe os 10 itens já prontos da API) ──
 function RankingCard({
   title,
   data,

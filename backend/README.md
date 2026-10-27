@@ -44,7 +44,7 @@ cd backend && python -m pytest
 
 ## Dados dos painéis (LGPD)
 
-O dashboard não baixa mais arquivos com dados por aluno: cada mudança de filtro é um
+O dashboard não recebe dados por aluno: cada mudança de filtro é um
 `GET` e a API devolve só o recorte agregado (contagens, taxas, médias, rankings).
 Nenhuma resposta traz o código do aluno — há teste para isso (`tests/test_painel_api.py`).
 
@@ -74,9 +74,7 @@ e `origemDados` (`real` ou `sintetico`, gravado pelo `build_database.py` na tabe
 
 Exemplo: `GET /api/painel/alunos?curso=ENGENHARIA%20CIVIL&periodos=2023.1&periodos=2023.2`.
 
-As regras são as que antes rodavam no navegador (`app/painel/alunos.py` e
-`app/painel/disciplinas.py`); a migração foi validada comparando 492 combinações de
-filtros com o código TypeScript antigo, com resultado idêntico (com `SUPRESSAO_K=1`). O Painel de
+As regras dos painéis ficam em `app/painel/alunos.py` e `app/painel/disciplinas.py`. O Painel de
 Disciplinas consulta a tabela pré-agregada `painel_disciplinas`, e cada combinação
 de filtros fica em cache até o banco ser regerado.
 

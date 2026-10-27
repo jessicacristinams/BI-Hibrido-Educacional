@@ -1,4 +1,4 @@
-"""Painel de Alunos: filtros e contagens feitos no servidor (antes rodavam no navegador, sobre JSONs públicos).
+"""Painel de Alunos: filtros e contagens feitos no servidor.
 
 Situação "no recorte":
 - sem período selecionado ("Todos os Períodos"): situação mais recente do histórico completo
