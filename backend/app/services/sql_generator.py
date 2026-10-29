@@ -59,6 +59,12 @@ EXEMPLOS: list[tuple[str, str]] = [
         " WHERE curso_busca LIKE '%ENGENHARIA CIVIL%' AND periodo_letivo = '2022.2' AND categoria = 'ATIVO'",
     ),
     (
+        "Quais os tipos de saída mais comuns entre os evadidos de Engenharia da Computação?",
+        "SELECT tipo_evasao, COUNT(*) AS evadidos FROM alunos"
+        " WHERE evadiu = 1 AND curso_busca LIKE '%COMPUTACAO%'"
+        " GROUP BY tipo_evasao ORDER BY evadidos DESC",
+    ),
+    (
         "Quantos alunos estão retidos hoje em cada curso?",
         "SELECT curso, COUNT(*) AS retidos FROM alunos WHERE situacao_atual = 'RETIDO'"
         " GROUP BY curso ORDER BY retidos DESC",
@@ -90,8 +96,10 @@ Exemplos:
 
 Responda APENAS com um JSON no formato:
 {{"relevante": true, "sql": "<consulta>"}}
-Se a pergunta não puder ser respondida com esses dados (assunto fora do escopo, pedido para
-alterar o banco, conversa casual...), responda:
+Antes de recusar, confira o schema, as regras e os valores: perguntas sobre cursos, períodos,
+situação dos alunos, evasão (inclusive tipo de saída), formação, disciplinas, notas e faltas SÃO
+respondíveis. Se, mesmo assim, a pergunta não puder ser respondida com esses dados (assunto fora
+do escopo, pedido para alterar o banco, conversa casual...), responda:
 {{"relevante": false, "sql": null, "motivo": "<explicação curta em português para o usuário>"}}
 """
 

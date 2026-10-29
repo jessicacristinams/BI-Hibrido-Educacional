@@ -2,17 +2,31 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+MAX_HISTORICO_RECEBIDO = 20
+MAX_TEXTO_HISTORICO = 4000
 
 
 class HistoricoItem(BaseModel):
     role: Literal["user", "assistant"]
-    text: str = Field(max_length=4000)
+    text: str
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def _cortar_texto(cls, v: object) -> object:
+        return v[:MAX_TEXTO_HISTORICO] if isinstance(v, str) else v
 
 
 class ChatRequest(BaseModel):
     pergunta: str = Field(min_length=1, max_length=1000)
-    historico: list[HistoricoItem] = Field(default_factory=list, max_length=20)
+    # Conversas longas não são recusadas: só as mensagens mais recentes servem de contexto.
+    historico: list[HistoricoItem] = Field(default_factory=list)
+
+    @field_validator("historico", mode="before")
+    @classmethod
+    def _ultimas_mensagens(cls, v: object) -> object:
+        return v[-MAX_HISTORICO_RECEBIDO:] if isinstance(v, list) else v
 
 
 class GraficoSpec(BaseModel):

@@ -39,6 +39,19 @@ def test_historico_vai_para_o_gerador_de_sql(make_client):
     assert msgs[-1]["content"] == "E em 2023.1?"
 
 
+def test_conversa_longa_nao_e_recusada(make_client):
+    """Antes, mais de 20 mensagens no histórico (ou uma resposta muito longa) davam erro 422."""
+    llm = FakeLLM([{"relevante": True, "sql": "SELECT 1 AS x"}, "ok"])
+    historico = [{"role": "user" if i % 2 == 0 else "assistant", "text": f"msg {i}"} for i in range(40)]
+    historico[-1]["text"] = "x" * 10_000
+    r = make_client(llm).post("/api/chat", json={"pergunta": "E agora?", "historico": historico})
+    assert r.status_code == 200, r.text
+    msgs = llm.chamadas[0]["messages"]
+    assert msgs[-1]["content"] == "E agora?"
+    assert "msg 0" not in [m["content"] for m in msgs]  # só as mais recentes viram contexto
+    assert all(len(m["content"]) <= 4000 for m in msgs)
+
+
 def test_pergunta_fora_do_escopo(make_client):
     llm = FakeLLM([{"relevante": False, "sql": None}])
     r = make_client(llm).post("/api/chat", json={"pergunta": "Quem é mais engraçado, Chaves ou Quico?"})

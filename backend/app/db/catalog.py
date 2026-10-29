@@ -78,6 +78,11 @@ REGRAS_NEGOCIO = """\
   SUM(categoria = 'FORMADO') etc. agrupado por periodo_letivo (assim períodos com zero também aparecem).
   Não use alunos.periodo_formacao nem alunos.periodo_evasao para séries por período.
 - alunos.semestre_formacao / semestre_evasao servem para "em que semestre cursado os alunos se formam/evadem".
+- "Tipo de saída", "tipo de evasão", "forma de saída" ou "como os alunos saíram" = alunos.tipo_evasao
+  (preenchido para alunos com evadiu = 1). Os valores possíveis estão em <valores>.
+- Nomes de curso: o usuário pode escrever "Engenharia da Computação", mas o nome gravado é
+  'ENGENHARIA COMPUTACÃO'. Filtre pela palavra mais distintiva, sem "DA"/"DE"/"DO"
+  (ex.: curso_busca LIKE '%COMPUTACAO%', '%CIVIL%', '%MECATRONICA%').
 """
 
 

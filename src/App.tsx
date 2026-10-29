@@ -1120,6 +1120,8 @@ const SUGESTOES = [
 ];
 
 const PREVIEW_LINHAS = 5;
+// Mensagens anteriores enviadas como contexto (o backend usa as mais recentes).
+const MAX_HISTORICO = 10;
 
 function formatCell(v: unknown): string {
   if (v === null || v === undefined) return "—";
@@ -1435,7 +1437,8 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
     const historico: HistoricoItem[] = messages
       .slice(1)
       .filter((m) => !m.erro)
-      .map((m) => ({ role: m.role, text: m.text }));
+      .slice(-MAX_HISTORICO)
+      .map((m) => ({ role: m.role, text: m.text.slice(0, 4000) }));
     setMessages((prev) => [...prev, { role: "user", text: pergunta }]);
     setInput("");
     setTyping(true);
