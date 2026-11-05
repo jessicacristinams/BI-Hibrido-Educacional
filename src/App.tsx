@@ -16,9 +16,15 @@ import {
   LabelList,
 } from "recharts";
 
-import type { Categoria, Filtros, RankingItem, SemestreValor, SeriePonto } from "./types/painel";
+import type { Categoria, Filtros, Previsao, RankingItem, SemestreValor, SeriePonto } from "./types/painel";
 import { CATEGORIAS, SERIE_KEY } from "./types/painel";
-import { buscarFiltros, buscarOpcoesDisciplinas, buscarPainelAlunos, buscarPainelDisciplinas } from "./services/painelApi";
+import {
+  buscarFiltros,
+  buscarOpcoesDisciplinas,
+  buscarPainelAlunos,
+  buscarPainelDisciplinas,
+  buscarPrevisao,
+} from "./services/painelApi";
 import { perguntar, type ChatResposta, type Grafico, type HistoricoItem } from "./services/chatApi";
 
 // ── Palette ────────────────────────────────────────────────────────────────
@@ -694,6 +700,60 @@ function PanelHeader({ title, subtitle, children }: { title: string; subtitle: s
   );
 }
 
+const SECAO_TITULO: CSSProperties = { fontSize: 14, fontWeight: 700, color: GRAY_800, marginBottom: 12 };
+
+/**
+ * Cards da previsão do próximo semestre letivo. Os números vêm prontos do notebook de previsão
+ * (tabela previsao); com "Todos os cursos", são a soma dos cursos.
+ */
+function PrevisaoCards({ previsao, categorias, cursoEscolhido }: { previsao: Previsao | null; categorias: Categoria[]; cursoEscolhido: boolean }) {
+  if (!previsao) {
+    return (
+      <div style={{ fontSize: 12, color: GRAY_400, marginBottom: 24 }}>
+        {cursoEscolhido ? "Sem previsão para este curso." : "Nenhuma previsão carregada."}
+      </div>
+    );
+  }
+  const itens = previsao.itens.filter((i) => categorias.includes(i.categoria));
+  // período-base da previsão (o mais recente, se os cursos tiverem bases diferentes)
+  const comparar = previsao.periodosBase[previsao.periodosBase.length - 1];
+  return (
+    <>
+      <div
+        style={{ fontSize: 12, color: GRAY_600, marginTop: -6, marginBottom: 12 }}
+        title="O modelo de previsão usa classificação própria (ex.: trancamento conta como retenção)."
+      >
+        Previsão para {previsao.periodoAlvo}. Para comparar com os dados reais, selecione o período{" "}
+        <strong>{comparar}</strong> no filtro Período Letivo.
+      </div>
+      <div
+        className="kpi-grid"
+        style={{ display: "grid", gridTemplateColumns: `repeat(${itens.length}, minmax(0, 220px))`, gap: 14, marginBottom: 28 }}
+      >
+        {itens.map((i) => (
+          <div
+            key={i.categoria}
+            style={{
+              background: CAT_META[i.categoria].bg,
+              borderWidth: "1px",
+              borderStyle: "dashed",
+              borderColor: CAT_META[i.categoria].color,
+              borderRadius: 12,
+              padding: "12px 18px",
+            }}
+          >
+            <div style={{ fontSize: 15, color: GRAY_600, fontWeight: 600, marginBottom: 8, lineHeight: 1.3 }}>
+              {CAT_META[i.categoria].indicador}
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: GRAY_800, lineHeight: 1 }}>{fmtInt(i.quantidade)}</div>
+            <div style={{ fontSize: 12, color: GRAY_600, marginTop: 6 }}>{fmtPct(i.taxa)} do total previsto</div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 // ── Painel: Análise de Alunos ────────────────────────────────────────────────
 function AlunasPanel({ filtros }: { filtros: Filtros }) {
   const [curso, setCurso] = useState(TODOS_CURSOS);
@@ -704,6 +764,8 @@ function AlunasPanel({ filtros }: { filtros: Filtros }) {
   // O recorte é calculado no backend; o navegador só recebe os números agregados.
   const consulta = { curso: curso === TODOS_CURSOS ? null : curso, periodos, indicadores: indicadoresSelecionados };
   const { dados: view, carregando, erro } = useApi((signal) => buscarPainelAlunos(consulta, signal), JSON.stringify(consulta));
+  // A previsão depende só do curso (não dos períodos selecionados).
+  const previsao = useApi((signal) => buscarPrevisao(consulta.curso, signal), consulta.curso ?? "");
 
   const cursoOptions = [TODOS_CURSOS, ...filtros.alunos.cursos];
 
@@ -756,6 +818,16 @@ function AlunasPanel({ filtros }: { filtros: Filtros }) {
       {cabecalho}
       {erro && <AvisoErro mensagem={erro} />}
 
+      <div style={SECAO_TITULO}>Dados Previstos para o Próximo Semestre Letivo</div>
+      {previsao.erro ? (
+        <div style={{ fontSize: 12, color: RED, marginBottom: 24 }}>{previsao.erro}</div>
+      ) : (
+        !previsao.carregando || previsao.dados ? (
+          <PrevisaoCards previsao={previsao.dados} categorias={view.categoriasVisiveis} cursoEscolhido={consulta.curso !== null} />
+        ) : null
+      )}
+
+      <div style={SECAO_TITULO}>Dados Reais</div>
       {/* KPI cards: um par (total + taxa) por indicador visível */}
       <div
         className="kpi-grid"

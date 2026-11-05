@@ -14,6 +14,18 @@ python backend/scripts/build_database.py              # usa o CSV real se existi
 python backend/scripts/build_database.py --sintetico  # força os dados fictícios
 ```
 
+## Previsão do próximo semestre (`dados/previsao/`, também fora do Git)
+
+| Arquivo | O que é | Quando é usado |
+|---|---|---|
+| `previsao/resumo_projetado_todos_os_cursos.csv` | resultado do notebook de previsão (Random Forest de transição, rodado fora do sistema) sobre os dados reais. **Não está no repositório.** | junto com o CSV real |
+| `previsao/resumo_projetado_sintetico.csv` | previsão **fictícia** no mesmo formato, criada por `gerar_dados_sinteticos.py` a partir dos alunos fictícios (sem modelo: proporções sorteadas) | junto com os dados fictícios; recriada quando falta |
+
+O `build_database.py` só carrega o arquivo na tabela `previsao`; o algoritmo não roda no sistema.
+O dashboard mostra a linha do curso escolhido ou, com "Todos os cursos", a soma dos cursos (com as
+porcentagens recalculadas sobre o total). Para atualizar a previsão real, substitua o arquivo (mesmas
+colunas) e gere o banco de novo. Sem ele, a seção de previsão fica vazia.
+
 Com os dados fictícios, o dashboard mostra o selo **"Dados sintéticos (demonstração)"**.
 Os números não representam a instituição: servem para rodar e avaliar o sistema.
 

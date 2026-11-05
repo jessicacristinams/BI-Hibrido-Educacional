@@ -37,10 +37,19 @@ def amostra_csv(tmp_path_factory) -> Path:
 
 
 @pytest.fixture(scope="session")
-def db_path(tmp_path_factory, amostra_csv) -> Path:
+def previsao_csv(tmp_path_factory, amostra_csv) -> Path:
+    """Previsão fictícia no formato do resumo do notebook de previsão."""
+    gerador = load_script("gerar_dados_sinteticos")
+    out = tmp_path_factory.mktemp("previsao") / "resumo_projetado.csv"
+    gerador.escrever_previsao(gerador.ler_linhas(amostra_csv), out)
+    return out
+
+
+@pytest.fixture(scope="session")
+def db_path(tmp_path_factory, amostra_csv, previsao_csv) -> Path:
     """Banco gerado pelo script real a partir do CSV fictício."""
     out = tmp_path_factory.mktemp("db") / "sigadash.db"
-    load_script("build_database").build(amostra_csv, out, origem="sintetico")
+    load_script("build_database").build(amostra_csv, out, origem="sintetico", previsao_csv=previsao_csv)
     return out
 
 

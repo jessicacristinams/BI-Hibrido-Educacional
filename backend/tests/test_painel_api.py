@@ -236,6 +236,7 @@ def test_build_sem_csv_real_usa_dados_sinteticos(tmp_path, monkeypatch):
     mod = load_script("build_database")
     monkeypatch.setattr(mod, "DEFAULT_CSV", tmp_path / "nao_existe.csv")
     monkeypatch.setattr(mod, "DEFAULT_SINTETICO", tmp_path / "sintetico.csv")
+    monkeypatch.setattr(mod, "DEFAULT_PREVISAO_SINTETICA", tmp_path / "previsao_sintetica.csv")
     out = tmp_path / "demo.db"
     monkeypatch.setattr("sys.argv", ["build_database.py", "--out", str(out)])
     assert mod.main() == 0
@@ -243,4 +244,7 @@ def test_build_sem_csv_real_usa_dados_sinteticos(tmp_path, monkeypatch):
     con = sqlite3.connect(out)
     assert dict(con.execute("SELECT chave, valor FROM metadados").fetchall())["origem_dados"] == "sintetico"
     assert con.execute("SELECT COUNT(*) FROM alunos").fetchone()[0] == 2000
+    # com os dados fictícios vem também a previsão fictícia
+    assert (tmp_path / "previsao_sintetica.csv").exists()
+    assert con.execute("SELECT COUNT(DISTINCT curso) FROM previsao").fetchone()[0] == 10
     con.close()

@@ -8,3 +8,4 @@ __pycache__/
 
 # Dados de alunos não vão para o repositório (LGPD). Veja dados/README.md.
 dados/*.csv
+dados/previsao/*.csv

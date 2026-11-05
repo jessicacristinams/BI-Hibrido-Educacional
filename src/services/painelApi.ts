@@ -2,7 +2,7 @@
  * Cliente dos painéis: cada mudança de filtro vira um GET com o recorte pedido,
  * e o backend devolve só os números agregados (os dados por aluno ficam no servidor).
  */
-import type { AlunosView, Categoria, DisciplinasView, Filtros } from "../types/painel";
+import type { AlunosView, Categoria, DisciplinasView, Filtros, Previsao } from "../types/painel";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
@@ -59,3 +59,7 @@ export const buscarPainelDisciplinas = (
 
 export const buscarOpcoesDisciplinas = (curso: string | null, signal?: AbortSignal) =>
   getJson<string[]>("/api/painel/disciplinas/opcoes", { curso }, signal);
+
+/** null quando não há previsão carregada no banco (ou para um curso fora do resumo projetado). */
+export const buscarPrevisao = (curso: string | null, signal?: AbortSignal) =>
+  getJson<Previsao | null>("/api/painel/previsao", { curso }, signal);

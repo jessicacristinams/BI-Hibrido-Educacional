@@ -125,3 +125,19 @@ export interface DisciplinasView {
   serieHistorica: SeriePeriodo[];
   tabela: LinhaTabela[];
 }
+
+// ── Previsão do próximo semestre (GET /api/painel/previsao) ─────────────────
+export interface PrevisaoItem {
+  categoria: Categoria;
+  quantidade: number;
+  /** % sobre o total projetado */
+  taxa: number;
+}
+
+/** Resumo projetado pelo notebook de previsão; "Todos os cursos" = soma dos cursos. */
+export interface Previsao {
+  periodoAlvo: string;
+  periodosBase: string[];
+  totalProjetado: number;
+  itens: PrevisaoItem[];
+}

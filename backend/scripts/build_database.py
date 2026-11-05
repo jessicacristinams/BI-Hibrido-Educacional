@@ -16,6 +16,10 @@ Tabelas geradas:
   matriculas      uma linha por matrícula em disciplina (nota, faltas, aprovado/reprovado)
   painel_disciplinas  agregado por curso × disciplina × período (Painel de Disciplinas)
   metadados       origem dos dados (real ou sintético) e data de geração
+  previsao        projeção do próximo semestre por curso. Com os dados reais, lida de
+                  dados/previsao/resumo_projetado_todos_os_cursos.csv (saída do notebook de
+                  previsão, fora do Git); com os dados fictícios, de uma previsão fictícia
+                  gerada por gerar_dados_sinteticos.py. Vazia se o arquivo não existir.
 """
 
 from __future__ import annotations
@@ -50,6 +54,17 @@ from disciplinas_mining import SITUACOES_APROVADO, SITUACOES_REPROVADO  # noqa: 
 DEFAULT_CSV = ROOT / "dados" / "df_tabela_final.csv"
 DEFAULT_SINTETICO = ROOT / "dados" / "df_tabela_sintetica.csv"
 DEFAULT_OUT = ROOT / "backend" / "data" / "sigadash.db"
+DEFAULT_PREVISAO = ROOT / "dados" / "previsao" / "resumo_projetado_todos_os_cursos.csv"
+DEFAULT_PREVISAO_SINTETICA = ROOT / "dados" / "previsao" / "resumo_projetado_sintetico.csv"
+
+# Situações do notebook de previsão -> categorias do dashboard
+SITUACAO_PREVISAO = {
+    "ALUNOS ATIVOS": "ATIVO",
+    "ALUNOS RETIDOS": "RETIDO",
+    "EVASÃO": "EVADIDO",
+    "CONCLUSÃO": "FORMADO",
+}
+COLUNAS_PREVISAO = ["NM_PROGR_FORM", "periodo_base", "periodo_alvo", "situacao", "quantidade_projetada"]
 
 DDL = """
 CREATE TABLE alunos (
@@ -207,7 +222,24 @@ def _rows_matriculas(df: pd.DataFrame) -> list[tuple]:
     ]
 
 
-def build(csv_path: Path, out_path: Path, origem: str = "real") -> None:
+def _rows_previsao(path: Path | None) -> list[tuple]:
+    """Lê o resumo projetado do notebook (o algoritmo não roda aqui: só os resultados são exibidos)."""
+    if path is None or not path.exists():
+        return []
+    df = pd.read_csv(path, encoding="utf-8-sig", dtype={"periodo_base": str, "periodo_alvo": str})
+    faltando = [c for c in COLUNAS_PREVISAO if c not in df.columns]
+    if faltando:
+        raise ValueError(f"{path.name}: colunas ausentes {faltando}")
+    desconhecidas = set(df["situacao"]) - set(SITUACAO_PREVISAO)
+    if desconhecidas:
+        raise ValueError(f"{path.name}: situações desconhecidas {sorted(desconhecidas)}")
+    return [
+        (r.NM_PROGR_FORM.strip(), r.periodo_base, r.periodo_alvo, SITUACAO_PREVISAO[r.situacao], int(r.quantidade_projetada))
+        for r in df.itertuples(index=False)
+    ]
+
+
+def build(csv_path: Path, out_path: Path, origem: str = "real", previsao_csv: Path | None = None) -> None:
     t0 = time.perf_counter()
     df = load_csv(csv_path)
     print(f"• CSV lido: {len(df):,} linhas")
@@ -246,9 +278,15 @@ def build(csv_path: Path, out_path: Path, origem: str = "real") -> None:
             "INSERT INTO metadados VALUES (?, ?)",
             [("origem_dados", origem), ("gerado_em", time.strftime("%Y-%m-%dT%H:%M:%S"))],
         )
+        # Previsão do próximo semestre: resultados prontos do notebook, por curso e categoria.
+        con.execute(
+            "CREATE TABLE previsao (curso TEXT NOT NULL, periodo_base TEXT NOT NULL, periodo_alvo TEXT NOT NULL,"
+            " categoria TEXT NOT NULL, quantidade INTEGER NOT NULL, PRIMARY KEY (curso, categoria))"
+        )
+        con.executemany("INSERT INTO previsao VALUES (?,?,?,?,?)", _rows_previsao(previsao_csv))
         con.commit()
         con.execute("ANALYZE")
-        for tabela in ("alunos", "alunos_periodo", "matriculas", "painel_disciplinas"):
+        for tabela in ("alunos", "alunos_periodo", "matriculas", "painel_disciplinas", "previsao"):
             (n,) = con.execute(f"SELECT COUNT(*) FROM {tabela}").fetchone()
             print(f"  ✔ {tabela}: {n:,} linhas")
     finally:
@@ -268,7 +306,11 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--origem", choices=["real", "sintetico"], default="real", help="origem do --csv informado")
     ap.add_argument("--sintetico", action="store_true", help="usa dados fictícios mesmo se houver CSV real")
+    ap.add_argument("--previsao", type=Path, default=None, help="resumo projetado do notebook (padrão conforme a origem)")
     args = ap.parse_args()
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import gerar_dados_sinteticos as sinteticos
 
     csv_path, origem = args.csv, args.origem
     if csv_path is None:
@@ -279,17 +321,25 @@ def main() -> int:
             if not args.sintetico:
                 print(f"⚠ {_rel(DEFAULT_CSV)} não encontrado: usando DADOS SINTÉTICOS (alunos fictícios).")
             if not DEFAULT_SINTETICO.exists():
-                sys.path.insert(0, str(Path(__file__).resolve().parent))
-                from gerar_dados_sinteticos import main as gerar_sinteticos
-
-                sys.argv = [sys.argv[0], "--out", str(DEFAULT_SINTETICO)]
-                gerar_sinteticos()
+                sys.argv = [sys.argv[0], "--out", str(DEFAULT_SINTETICO), "--previsao-out", str(DEFAULT_PREVISAO_SINTETICA)]
+                sinteticos.main()
             csv_path, origem = DEFAULT_SINTETICO, "sintetico"
 
     if not csv_path.exists():
         print(f"CSV não encontrado: {csv_path}", file=sys.stderr)
         return 1
-    build(csv_path, args.out, origem)
+
+    # Previsão: a real (saída do notebook) acompanha os dados reais; a fictícia, os dados fictícios.
+    previsao = args.previsao
+    if previsao is None and origem == "real":
+        previsao = DEFAULT_PREVISAO
+        if not previsao.exists():
+            print(f"⚠ {_rel(previsao)} não encontrado: o dashboard ficará sem a previsão do próximo semestre.")
+    elif previsao is None:
+        previsao = DEFAULT_PREVISAO_SINTETICA
+        if not previsao.exists():
+            sinteticos.escrever_previsao(sinteticos.ler_linhas(csv_path), previsao)
+    build(csv_path, args.out, origem, previsao)
     return 0
 
 

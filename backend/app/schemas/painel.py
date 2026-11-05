@@ -107,3 +107,18 @@ class PainelDisciplinas(BaseModel):
     rankingMaisFaltas: list[RankingItem]
     serieHistorica: list[SeriePontoDisciplinas]
     tabela: list[LinhaTabela]
+
+
+class PrevisaoItem(BaseModel):
+    categoria: Categoria
+    quantidade: int
+    taxa: float  # % sobre o total projetado
+
+
+class Previsao(BaseModel):
+    """Resumo projetado pelo notebook de previsão (soma dos cursos quando nenhum curso é escolhido)."""
+
+    periodoAlvo: str
+    periodosBase: list[str]
+    totalProjetado: int
+    itens: list[PrevisaoItem]

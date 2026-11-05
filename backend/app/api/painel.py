@@ -12,7 +12,8 @@ from app.core.errors import DatabaseUnavailableError
 from app.painel.alunos import filtros_alunos, painel_alunos
 from app.painel.comum import origem_dados
 from app.painel.disciplinas import disciplinas_do_curso, filtros_disciplinas, painel_disciplinas
-from app.schemas.painel import Categoria, FiltrosResponse, PainelAlunos, PainelDisciplinas
+from app.painel.previsao import previsao
+from app.schemas.painel import Categoria, FiltrosResponse, PainelAlunos, PainelDisciplinas, Previsao
 
 router = APIRouter(prefix="/api/painel", tags=["painéis"])
 
@@ -91,3 +92,9 @@ def disciplinas(
 def opcoes_disciplinas(settings: SettingsDep, curso: Curso = None) -> list[str]:
     """Disciplinas oferecidas no curso (opções do filtro Disciplina)."""
     return _consultar(lambda: disciplinas_do_curso(settings.database_path, curso or None))
+
+
+@router.get("/previsao", response_model=Previsao | None)
+def previsao_proximo_semestre(settings: SettingsDep, curso: Curso = None) -> dict | None:
+    """Previsão do próximo semestre letivo (resultado do notebook de previsão); null se não houver."""
+    return _consultar(lambda: previsao(settings.database_path, curso or None))

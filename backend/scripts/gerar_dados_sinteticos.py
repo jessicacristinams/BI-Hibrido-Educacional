@@ -6,6 +6,10 @@ desenvolvimento, testes) conseguir rodar o sistema, este script gera uma base in
 códigos, trajetórias, notas e faltas são sorteados; nada vem dos registros reais. Os nomes
 de cursos e disciplinas são só rótulos de currículo, não dados pessoais.
 
+Também gera uma PREVISÃO FICTÍCIA do próximo semestre no formato do resumo do notebook de
+previsão (resumo_projetado_todos_os_cursos.csv). Não há modelo aqui: as quantidades partem dos
+alunos fictícios em 2024.2 e são repartidas com proporções sorteadas, só para a demonstração.
+
 Uso (a partir da raiz do projeto):
     python backend/scripts/gerar_dados_sinteticos.py
     python backend/scripts/gerar_dados_sinteticos.py --alunos 3000 --semente 7 --out dados/df_tabela_sintetica.csv
@@ -16,10 +20,12 @@ from __future__ import annotations
 import argparse
 import csv
 import random
+from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "dados" / "df_tabela_sintetica.csv"
+DEFAULT_PREVISAO_OUT = ROOT / "dados" / "previsao" / "resumo_projetado_sintetico.csv"
 
 COLUNAS = [
     "codigo_estudante", "NM_PROGR_FORM", "PERIODO_ADMIS", "NU_ANO_CONC", "DS_TP_SIT_ACAD",
@@ -143,11 +149,66 @@ def gerar(n_alunos: int = 2000, semente: int = 42) -> list[list[str]]:
     return linhas
 
 
+# Previsão fictícia: mesmo período-base e período-alvo do notebook de previsão.
+PREVISAO_BASE, PREVISAO_ALVO = "2024.2", "2026.1"
+PERIODOS_INGRESSO = {"2023.1", "2023.2", "2024.1", "2024.2"}  # média de ingressantes, como no notebook
+COLUNAS_PREVISAO = ["NM_PROGR_FORM", "periodo_base", "periodo_alvo", "situacao", "quantidade_projetada", "proporcao_projetada"]
+SITUACOES_TERMINAIS = {"FORMADO"} | {t for t, _ in TIPOS_EVASAO}
+
+
+def gerar_previsao(linhas: list[list[str]], semente: int = 42) -> list[list]:
+    """Resumo projetado fictício por curso, a partir das linhas geradas por gerar()."""
+    rng = random.Random(semente)
+    na_base: dict[str, set[str]] = defaultdict(set)
+    admissao: dict[str, tuple[str, str]] = {}
+    for codigo, curso, periodo_admis, _, situacao, _, _, periodo, _, _ in linhas:
+        admissao[codigo] = (curso, periodo_admis)
+        if periodo == PREVISAO_BASE and situacao not in SITUACOES_TERMINAIS:
+            na_base[curso].add(codigo)
+    ingressos = Counter(curso for curso, adm in admissao.values() if adm in PERIODOS_INGRESSO)
+
+    saida: list[list] = []
+    for curso in CURSOS:
+        n, ingresso = len(na_base[curso]), ingressos[curso] / len(PERIODOS_INGRESSO)
+        if n == 0 and ingresso == 0:
+            continue
+        pesos = {
+            "ALUNOS ATIVOS": rng.uniform(0.62, 0.78),
+            "ALUNOS RETIDOS": rng.uniform(0.12, 0.25),
+            "EVASÃO": rng.uniform(0.05, 0.10),
+            "CONCLUSÃO": rng.uniform(0.01, 0.04),
+        }
+        soma = sum(pesos.values())
+        qtd = {s: round(n * p / soma) for s, p in pesos.items()}
+        qtd["ALUNOS ATIVOS"] += round(ingresso)
+        total = sum(qtd.values())
+        for situacao, q in sorted(qtd.items(), key=lambda sq: -sq[1]):
+            saida.append([curso, PREVISAO_BASE, PREVISAO_ALVO, situacao, q, round(q / total, 4) if total else 0.0])
+    return saida
+
+
+def ler_linhas(csv_path: Path) -> list[list[str]]:
+    with csv_path.open(encoding="utf-8-sig", newline="") as f:
+        leitor = csv.reader(f, delimiter=";")
+        next(leitor)
+        return list(leitor)
+
+
+def escrever_previsao(linhas: list[list[str]], out: Path, semente: int = 42) -> None:
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(COLUNAS_PREVISAO)
+        w.writerows(gerar_previsao(linhas, semente))
+    print(f"• Previsão fictícia em {out}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Gera um CSV de alunos fictícios no formato de df_tabela_final.csv")
     ap.add_argument("--alunos", type=int, default=2000)
     ap.add_argument("--semente", type=int, default=42)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    ap.add_argument("--previsao-out", type=Path, default=DEFAULT_PREVISAO_OUT)
     args = ap.parse_args()
 
     linhas = gerar(args.alunos, args.semente)
@@ -157,6 +218,7 @@ def main() -> int:
         w.writerow(COLUNAS)
         w.writerows(linhas)
     print(f"• {len(linhas):,} linhas de {args.alunos:,} alunos fictícios em {args.out}")
+    escrever_previsao(linhas, args.previsao_out, args.semente)
     return 0
 
 

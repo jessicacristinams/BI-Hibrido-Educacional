@@ -39,7 +39,8 @@ nano .env        # ou outro editor
 | `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `LLM_MODEL`, `LLM_TIMEOUT_S` | modelo de linguagem (abaixo) | OpenAI `gpt-4o-mini` |
 | `SUPRESSAO_K` | opcional (LGPD): com *k* > 1, os painéis ocultam números de grupos com menos de *k* pessoas | `1` (valores reais) |
 
-**Dados:** o CSV real não está no repositório. Copie-o para `dados/df_tabela_final.csv` no
+**Dados:** o CSV real não está no repositório. Copie-o para `dados/df_tabela_final.csv` (e a
+previsão do notebook para `dados/previsao/resumo_projetado_todos_os_cursos.csv`) no
 servidor antes do build (veja [`../dados/README.md`](../dados/README.md)). Sem ele, o sistema
 sobe com dados fictícios e mostra o selo "Dados sintéticos (demonstração)".
 

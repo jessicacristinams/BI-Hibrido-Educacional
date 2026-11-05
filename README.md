@@ -78,6 +78,12 @@ Filtros: **Polo**, **Período Letivo** (seleção múltipla), **Curso** e **Indi
   taxas continuam calculadas sobre o total de alunos do recorte.
 - Evasão/formação por semestre cursado rolam na horizontal (há semestres até ~27).
 
+- **Dados Previstos para o Próximo Semestre Letivo** — no topo do painel, quatro cards com a
+  projeção do notebook de previsão (`dados/previsao/`, fora do Git; com os dados fictícios, uma
+  previsão fictícia): com um curso escolhido, os números dele; com "Todos os Cursos", a soma dos
+  cursos. A previsão não depende do filtro de período; para comparar com os dados reais, selecione
+  o período-base indicado (2024.2).
+
 ## Painel de Disciplinas
 
 Filtros: **Polo**, **Curso**, **Período Letivo** (seleção múltipla) e **Disciplina** 

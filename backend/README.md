@@ -71,6 +71,7 @@ e `origemDados` (`real` ou `sintetico`, gravado pelo `build_database.py` na tabe
 | GET | `/api/painel/alunos` | `curso`, `periodos`, `indicadores` (`ATIVO`, `EVADIDO`, `RETIDO`, `FORMADO`) |
 | GET | `/api/painel/disciplinas` | `curso`, `periodos`, `disciplinas` |
 | GET | `/api/painel/disciplinas/opcoes` | `curso` |
+| GET | `/api/painel/previsao` | `curso` (previsão do próximo semestre; `null` se não houver) |
 
 Exemplo: `GET /api/painel/alunos?curso=ENGENHARIA%20CIVIL&periodos=2023.1&periodos=2023.2`.
 
