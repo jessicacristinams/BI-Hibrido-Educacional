@@ -76,6 +76,8 @@ Situação dos alunos (igual aos cards do dashboard):
   de um grupo = SUM(situacao_atual = 'EVADIDO') ÷ COUNT(*) do grupo; o mesmo para RETIDO, FORMADO e ATIVO.
 - Não use alunos.evadiu nem alunos.formou para taxas nem para totais: evadiu = 1 inclui alunos que evadiram e
   depois voltaram (reintegração) e alguns até se formaram.
+- Nunca calcule taxas em alunos_periodo sem filtrar UM periodo_letivo ou agrupar por periodo_letivo: cada
+  aluno aparece em vários períodos. Comparar cursos sem período = tabela alunos com situacao_atual.
 - COM período informado: use alunos_periodo, que tem uma linha por aluno em cada período. Taxa de evasão
   (ou retenção, atividade, formação) EM UM PERÍODO = SUM(categoria = 'EVADIDO') ÷ COUNT(*) naquele periodo_letivo.
 - Intervalo de períodos ("de 2018.1 a 2024.2", "por período"): uma linha por periodo_letivo (GROUP BY
@@ -89,11 +91,13 @@ Situação dos alunos (igual aos cards do dashboard):
   total, porque as fases têm quantidades diferentes de períodos. Use CASE WHEN periodo_letivo < 'AAAA.1'.
 - Eventos de evasão (quando e como o aluno saiu): alunos.semestre_evasao ("em que semestre evadem",
   "evadiram nos N primeiros semestres" = semestre_evasao <= N) e alunos.tipo_evasao ("tipo de saída",
-  "forma de saída"), sempre com evadiu = 1. alunos.semestre_formacao = "em quantos semestres se formam".
+  "forma de saída"), sempre com evadiu = 1. "Em quantos semestres se formam" / "tempo médio até a
+  formatura" = AVG(alunos.semestre_formacao) com formou = 1 (não subtraia outras colunas).
 - Ingressantes por período = alunos agrupados por periodo_admissao.
 
 Disciplinas:
-- Taxa de aprovação = SUM(aprovado) ÷ (SUM(aprovado) + SUM(reprovado)); taxa de reprovação =
+- Taxa de aprovação = SUM(aprovado) ÷ (SUM(aprovado) + SUM(reprovado)) — o denominador NÃO é COUNT(*), que
+  inclui cancelamentos e outras situações; taxa de reprovação =
   SUM(reprovado) ÷ (SUM(aprovado) + SUM(reprovado)). Em rankings de TAXA, exija HAVING avaliados >= 30.
 - Rankings de média de nota ou de faltas (iguais aos do dashboard): sem mínimo de alunos, só com
   HAVING COUNT(media_final) > 0 (ou COUNT(total_faltas) > 0).

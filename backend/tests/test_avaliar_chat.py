@@ -32,6 +32,18 @@ def test_comparar(cols, dados, esperado):
     assert av.comparar(ref_cols, ref, cols, dados)[0] is esperado
 
 
+def test_comparar_rotulos_escritos_pelo_modelo_casam_pela_ordem():
+    ref_cols, ref = ["fase", "media", "taxa"], [["antes", 79.4, 4.6], ["depois", 290.1, 8.6]]
+    chat = [["antes de 2020", 20, 1588, 79.4, 4.6], ["a partir de 2020", 13, 3771, 290.1, 8.6]]
+    assert av.comparar(ref_cols, ref, ["fase", "periodos", "evadidos", "m", "t"], chat)[0]
+
+
+def test_comparar_aceita_faltar_linha_toda_zero():
+    ref_cols, ref = ["periodo", "ativos"], [["2010.1", 250], ["2025.2", 0], ["2011.1", 300]]
+    assert av.comparar(ref_cols, ref, ["p", "n"], [["2010.1", 250], ["2011.1", 300]])[0]
+    assert not av.comparar(ref_cols, ref, ["p", "n"], [["2010.1", 250], ["2011.1", 301]])[0]
+
+
 def test_comparar_aceita_o_comeco_do_ranking():
     ref_cols, ref = ["curso", "taxa"], [["MECATRONICA", 60.3], ["CIVIL", 33.7]]
     assert av.comparar(ref_cols, ref, ["curso", "taxa"], [["MECATRONICA", 60.3]])[0]

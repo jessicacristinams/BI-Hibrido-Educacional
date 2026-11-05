@@ -1,3 +1,5 @@
+import pytest
+
 from app.core.config import Settings
 from app.services.answer_writer import SEM_RESULTADOS
 from app.services.chat_service import SEM_CONSULTA_VALIDA, FORA_DO_ESCOPO
@@ -161,3 +163,10 @@ def test_redator_recebe_maior_e_menor_calculados(make_client):
     conteudo = llm.chamadas[1]["messages"][0]["content"]
     assert "Destaques (calculados sobre todas as linhas)" in conteudo
     assert "- total: maior = " in conteudo
+
+
+@pytest.mark.parametrize("tipo, trecho", [("lgpd", "LGPD"), ("alteracao", "somente leitura"), ("causas", "motivos"), ("fora_do_escopo", "Sigadash")])
+def test_recusa_usa_texto_fixo_pelo_tipo(make_client, tipo, trecho):
+    llm = FakeLLM([{"relevante": False, "sql": None, "tipo": tipo}])
+    r = make_client(llm).post("/api/chat", json={"pergunta": "qualquer coisa"})
+    assert trecho in r.json()["resposta"] and r.json()["sql"] is None

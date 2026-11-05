@@ -97,6 +97,11 @@ EXEMPLOS: list[tuple[str, str]] = [
         " WHERE curso = 'ENGENHARIA CIVIL' AND periodo_letivo = '2022.2' AND categoria = 'ATIVO'",
     ),
     (
+        "Em média, com quantos semestres os alunos de Engenharia Civil se formam?",
+        "SELECT ROUND(AVG(semestre_formacao), 1) AS media_semestres FROM alunos"
+        " WHERE formou = 1 AND curso = 'ENGENHARIA CIVIL'",
+    ),
+    (
         "Quantos alunos estão retidos hoje em cada curso?",
         "SELECT curso, COUNT(*) AS retidos FROM alunos WHERE situacao_atual = 'RETIDO'"
         " GROUP BY curso ORDER BY retidos DESC",
@@ -119,6 +124,13 @@ EXEMPLOS: list[tuple[str, str]] = [
         " ROUND(100.0 * SUM(reprovado) / (SUM(aprovado) + SUM(reprovado)), 1) AS taxa_reprovacao_pct"
         " FROM matriculas WHERE semestre <= 2 GROUP BY disciplina HAVING avaliados >= 30"
         " ORDER BY taxa_reprovacao_pct DESC LIMIT 10",
+    ),
+    (
+        "Como evoluiu a taxa de aprovação de Geometria Analítica?",
+        "SELECT periodo_letivo, SUM(aprovado) + SUM(reprovado) AS avaliados,"
+        " ROUND(100.0 * SUM(aprovado) / (SUM(aprovado) + SUM(reprovado)), 1) AS taxa_aprovacao_pct"
+        " FROM matriculas WHERE disciplina_busca = 'GEOMETRIA ANALITICA'"
+        " GROUP BY periodo_letivo HAVING avaliados > 0 ORDER BY periodo_letivo",
     ),
     (
         "Compare a taxa de reprovação de Física 1 entre os cursos.",
@@ -164,19 +176,27 @@ Responda APENAS com um JSON no formato:
 Antes de recusar, confira o schema, as regras e os valores: perguntas sobre cursos, períodos,
 situação dos alunos, evasão (inclusive tipo de saída e semestre), formação, ingressantes, disciplinas
 (inclusive do primeiro ano), notas e faltas SÃO respondíveis. Se, mesmo assim, a pergunta não puder ser
-respondida com esses dados, responda:
-{{"relevante": false, "sql": null, "motivo": "<explicação curta em português para o usuário>"}}
-O motivo deve dizer o porquê, conforme o caso:
-- dados de alunos individuais (códigos, nomes, listas de alunos): "Por proteção de dados (LGPD), não mostro
-  informações de alunos individuais; posso mostrar totais e taxas por curso, período ou disciplina."
-- pedido para alterar, apagar ou inserir dados: "O assistente só consulta os dados (acesso somente
-  leitura); não é possível alterar ou apagar registros."
-- causas e motivos ("por que os alunos evadem?"): "A base não registra os motivos da evasão (renda,
-  perfil, razões pessoais). Posso mostrar quando os alunos saem (semestre e período) e como saem (tipo
-  de saída)."
-- assunto fora do Sigadash (clima, conversa casual...): "Só respondo perguntas sobre os dados
-  acadêmicos do Sigadash (alunos, cursos, disciplinas, notas, evasão e formação)."
+respondida com esses dados, responda com o TIPO do motivo:
+{{"relevante": false, "sql": null, "tipo": "<lgpd | alteracao | causas | fora_do_escopo>"}}
+- "lgpd": pede dados de alunos individuais (códigos, nomes, lista de alunos). Ex.: "Liste os códigos dos alunos".
+- "alteracao": pede para alterar, apagar ou inserir dados. Ex.: "Apague os alunos de 2010".
+- "causas": pergunta o porquê/os motivos, que a base não registra. Ex.: "Por que os alunos evadem?".
+- "fora_do_escopo": qualquer outro assunto (clima, notícias, conversa casual). Ex.: "Vai chover amanhã?".
 """
+
+
+# Textos das recusas: o modelo só classifica o motivo (mais confiável num modelo pequeno do que
+# pedir que ele escreva a explicação).
+MOTIVOS_RECUSA = {
+    "lgpd": "Por proteção de dados (LGPD), não mostro informações de alunos individuais; posso mostrar "
+    "totais e taxas por curso, período ou disciplina.",
+    "alteracao": "O assistente só consulta os dados (acesso somente leitura); não é possível alterar ou "
+    "apagar registros.",
+    "causas": "A base não registra os motivos da evasão (renda, perfil, razões pessoais). Posso mostrar "
+    "quando os alunos saem (semestre e período) e como saem (tipo de saída).",
+    "fora_do_escopo": "Só consigo responder perguntas sobre os dados acadêmicos do Sigadash "
+    "(alunos, cursos, disciplinas, notas, evasão e formação).",
+}
 
 
 @dataclass
@@ -205,7 +225,8 @@ def _parse(texto: str) -> GeneratedSQL:
     return GeneratedSQL(
         relevante=bool(data.get("relevante")) and bool(sql),
         sql=sql if isinstance(sql, str) else None,
-        motivo=data.get("motivo") if isinstance(data.get("motivo"), str) else None,
+        motivo=MOTIVOS_RECUSA.get(str(data.get("tipo", "")).strip().lower())
+        or (data.get("motivo") if isinstance(data.get("motivo"), str) else None),
     )
 
 

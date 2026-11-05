@@ -237,6 +237,13 @@ def comparar(ref_cols: list[str], ref: list[list[Any]], cols: list[str], dados: 
     """
     if not dados and all(not _numero(v) or v == 0 for linha in ref for v in linha):
         return True, "nenhum registro (a referência é toda zero)"
+    if 0 < len(dados) < len(ref) and len(ref_cols) > 1:
+        # linhas que só têm zero (ex.: período sem nenhum aluno ativo) podem faltar no chat
+        sem_zeros = [linha for linha in ref if any(_numero(v) and v != 0 for v in linha)]
+        if len(sem_zeros) == len(dados):
+            ok, _ = comparar(ref_cols, sem_zeros, cols, dados)
+            if ok:
+                return True, "números iguais (sem as linhas que são zero na referência)"
     if 0 < len(dados) < len(ref):
         # "Qual curso tem a maior taxa?" respondido só com o primeiro: certo se for o começo do ranking
         ok, _ = comparar(ref_cols, ref[: len(dados)], cols, dados)
@@ -251,12 +258,16 @@ def comparar(ref_cols: list[str], ref: list[list[Any]], cols: list[str], dados: 
 
     # rótulos da referência ↔ colunas do chat com o mesmo conjunto de valores
     casamento: list[int] = []
+    rotulos_livres = False  # rótulos escritos pelo modelo (ex.: 'antes de 2020' × 'antes'): casa pela ordem
     for i in rotulos:
         alvo = sorted(str(v).casefold() for v in _coluna(ref, i))
         j = next((j for j in range(len(cols)) if sorted(str(v).casefold() for v in _coluna(dados, j)) == alvo), None)
         if j is None:
-            return False, f"valores de '{ref_cols[i]}' não aparecem no resultado do chat"
+            rotulos_livres = True
+            break
         casamento.append(j)
+    if rotulos_livres:
+        casamento, rotulos = [], []
 
     if casamento:
         por_chave = {tuple(str(linha[j]).casefold() for j in casamento): linha for linha in dados}
