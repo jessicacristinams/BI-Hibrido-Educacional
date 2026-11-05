@@ -107,7 +107,8 @@ CREATE TABLE matriculas (
     aprovado             INTEGER NOT NULL,
     reprovado            INTEGER NOT NULL,
     media_final          REAL,
-    total_faltas         REAL
+    total_faltas         REAL,
+    semestre             INTEGER  -- semestre cursado pelo aluno no período da matrícula
 );
 
 CREATE INDEX ix_alunos_curso ON alunos(curso);
@@ -268,6 +269,11 @@ def build(csv_path: Path, out_path: Path, origem: str = "real", previsao_csv: Pa
             " periodo_letivo, situacao_disciplina, aprovado, reprovado, media_final, total_faltas)"
             " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             _rows_matriculas(df),
+        )
+        # Semestre cursado em cada matrícula (para perguntas sobre disciplinas do primeiro ano etc.)
+        con.execute(
+            "UPDATE matriculas SET semestre = (SELECT ap.semestre FROM alunos_periodo ap"
+            " WHERE ap.codigo_estudante = matriculas.codigo_estudante AND ap.periodo_letivo = matriculas.periodo_letivo)"
         )
         # Agregado do Painel de Disciplinas: só contagens e somas por curso × disciplina × período,
         # sem linhas por aluno. Médias = soma ÷ quantidade de valores registrados.

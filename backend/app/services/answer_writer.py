@@ -16,6 +16,8 @@ Recebe a pergunta do usuário, a consulta SQL executada e o resultado dela.
 
 1) Responda à pergunta em português, de forma clara e direta (no máximo um parágrafo curto ou uma
 lista curta), usando SOMENTE os números do resultado — nunca invente valores.
+- Para dizer qual é o maior ou o menor, ou se algo aumentou ou diminuiu, use os "Destaques": eles
+  foram calculados sobre TODAS as linhas do resultado e estão corretos. Não contradiga os destaques.
 - Formate números no padrão brasileiro (vírgula decimal) e indique % quando forem taxas.
 - Se o resultado tiver muitas linhas, destaque os principais itens e diga que a tabela completa
   está logo abaixo da resposta.
@@ -27,13 +29,16 @@ lista curta), usando SOMENTE os números do resultado — nunca invente valores.
 - x: nome EXATO de uma coluna temporal ou categórica. y: lista com 1 a 3 nomes EXATOS de colunas
   numéricas, todas na mesma unidade (nunca misture contagem com porcentagem).
 - Escolha em y a métrica que responde à pergunta. Use 2 ou 3 séries só para comparar medidas
-  da mesma unidade (ex.: aprovados e reprovados).
+  da mesma unidade (ex.: aprovados e reprovados, ou taxas de evasão, retenção e formação em %).
+- serie (opcional): quando o resultado tem uma linha por período E categoria (ex.: periodo, curso,
+  ingressantes), use x = coluna do período, y = [a métrica] e serie = a coluna da categoria; o gráfico
+  desenha uma linha por categoria. Sem esse caso, omita serie.
 - titulo: curto, em português.
 - Use null quando o resultado for um único valor ou quando o usuário pedir explicitamente só texto.
   Se o usuário pedir um gráfico, sugira um sempre que os dados permitirem.
 
 Responda APENAS com um JSON no formato:
-{"resposta": "<texto>", "grafico": {"tipo": "...", "x": "...", "y": ["..."], "titulo": "..."} | null}
+{"resposta": "<texto>", "grafico": {"tipo": "...", "x": "...", "y": ["..."], "serie": "..." | null, "titulo": "..."} | null}
 """
 
 SEM_RESULTADOS = (
@@ -69,6 +74,41 @@ def _descrever_colunas(resultado: QueryResult) -> str:
     return ", ".join(f"{c} ({_ROTULO_TIPO[tipos[c]]})" for c in resultado.colunas)
 
 
+def _num(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _destaques(resultado: QueryResult) -> str:
+    """Maior/menor de cada coluna numérica (e primeiro/último numa série temporal), calculados aqui.
+
+    O modelo pequeno às vezes lê errado qual é o maior valor de uma tabela; com os extremos prontos,
+    a resposta não contradiz os dados.
+    """
+    tipos = classificar_colunas(resultado.colunas, resultado.linhas)
+    rotulos = [i for i, c in enumerate(resultado.colunas) if tipos[c] != "numerica"]
+    temporal = next((i for i, c in enumerate(resultado.colunas) if tipos[c] == "temporal"), None)
+
+    def rotulo(linha: list[Any]) -> str:
+        return " / ".join(_fmt(linha[i]) for i in rotulos)
+
+    saida = []
+    for i, coluna in enumerate(resultado.colunas):
+        if tipos[coluna] != "numerica":
+            continue
+        com_valor = [linha for linha in resultado.linhas if _num(linha[i])]
+        if len(com_valor) < 2:
+            continue
+        maior = max(com_valor, key=lambda linha: linha[i])
+        menor = min(com_valor, key=lambda linha: linha[i])
+        texto = f"- {coluna}: maior = {_fmt(maior[i])}" + (f" ({rotulo(maior)})" if rotulos else "")
+        texto += f"; menor = {_fmt(menor[i])}" + (f" ({rotulo(menor)})" if rotulos else "")
+        if temporal is not None and not rotulos[1:]:  # série simples por período: início e fim
+            texto += f"; primeiro = {_fmt(com_valor[0][i])} ({_fmt(com_valor[0][temporal])}),"
+            texto += f" último = {_fmt(com_valor[-1][i])} ({_fmt(com_valor[-1][temporal])})"
+        saida.append(texto)
+    return "\n".join(saida)
+
+
 def resultado_vazio(resultado: QueryResult) -> bool:
     return not resultado.linhas or all(v is None for linha in resultado.linhas for v in linha)
 
@@ -93,4 +133,7 @@ def write_answer(llm: LLMClient, pergunta: str, sql: str, resultado: QueryResult
         f"Colunas: {_descrever_colunas(resultado)}\n\n"
         f"Resultado:\n{_tabela(resultado, max_linhas)}"
     )
+    destaques = _destaques(resultado)
+    if destaques:
+        conteudo += f"\n\nDestaques (calculados sobre todas as linhas):\n{destaques}"
     return _parse(llm.complete(SYSTEM_PROMPT, [{"role": "user", "content": conteudo}], json_mode=True))

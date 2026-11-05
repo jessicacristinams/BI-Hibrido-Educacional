@@ -17,6 +17,11 @@ from app.services.sql_guard import validate_select
 
 log = logging.getLogger(__name__)
 
+SEM_CONSULTA_VALIDA = (
+    "Não consegui montar uma consulta válida para essa pergunta. Tente reformular, indicando por exemplo "
+    "o curso, a disciplina ou o período letivo."
+)
+
 FORA_DO_ESCOPO = (
     "Só consigo responder perguntas sobre os dados acadêmicos do Sigadash "
     "(alunos, cursos, disciplinas, notas, evasão e formação)."
@@ -41,6 +46,9 @@ class ChatService:
         for tentativa in range(1, self._settings.max_tentativas_sql + 1):
             gerado = generate_sql(self._llm, banco, req.pergunta, historico, erro_anterior)
             if not gerado.relevante or not gerado.sql:
+                if erro_anterior:
+                    # Desistiu ao corrigir um SQL com erro: o "motivo" costuma ser o próprio erro técnico.
+                    return SEM_CONSULTA_VALIDA
                 return gerado.motivo or FORA_DO_ESCOPO
             try:
                 sql = validate_select(gerado.sql, TABELAS_PERMITIDAS)

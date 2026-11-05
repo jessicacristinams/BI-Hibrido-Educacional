@@ -1185,10 +1185,10 @@ type Message = {
 };
 
 const SUGESTOES = [
-  "Quais cursos possuem maior taxa de evasão?",
-  "Quais disciplinas possuem maior taxa de reprovação?",
-  "Mostre a evolução dos concluintes.",
-  "Quantos alunos estão retidos hoje em cada curso?",
+  "Em que semestre do curso os alunos mais evadem?",
+  "Quais disciplinas do primeiro ano têm maior taxa de reprovação?",
+  "Compare evasão, retenção e formação entre os cursos.",
+  "Mostre a evolução da taxa de aprovação de Cálculo 1 por período.",
 ];
 
 const PREVIEW_LINHAS = 5;
@@ -1203,6 +1203,8 @@ function formatCell(v: unknown): string {
 
 // Gráfico do chat: o backend diz o tipo e as colunas; os valores vêm de `dados` (resultado do SQL).
 const SERIES_CORES = [BLUE, ORANGE, PURPLE]; // ordem fixa, validada para daltonismo
+// Uma série por categoria (ex.: uma linha por curso): até 10 cores distintas.
+const SERIES_CATEGORIA_CORES = [BLUE, ORANGE, PURPLE, GREEN, RED, TEAL, YELLOW, "#db2777", "#4b5563", "#65a30d"];
 const MAX_BARRAS = 15;
 
 function nomeColuna(c: string): string {
@@ -1232,14 +1234,34 @@ function GraficoCanvas({
   // Rankings/categorias longas ficam ilegíveis no painel: corta em 15. Séries por período ficam inteiras.
   const porPeriodo = dados.every((l) => /^\d{4}\.\d$/.test(String(l[ix])));
   const linhas = grafico.tipo === "linha" || porPeriodo ? dados : dados.slice(0, MAX_BARRAS);
-  const rows = linhas.map((linha) => {
-    const row: Record<string, string | number | null> = { [grafico.x]: String(linha[ix] ?? "—") };
-    grafico.y.forEach((y, k) => {
-      const v = linha[iys[k]];
-      row[y] = typeof v === "number" ? v : null;
+
+  // Com `serie`, o resultado vem "longo" (período, curso, valor): vira uma coluna por curso.
+  const iserie = grafico.serie ? colunas.indexOf(grafico.serie) : -1;
+  const valoresSerie = iserie >= 0 ? [...new Set(dados.map((l) => String(l[iserie] ?? "—")))] : [];
+  const ys = iserie >= 0 ? valoresSerie.map((_, k) => `s${k}`) : grafico.y;
+  const nomeSerie = (y: string) => (iserie >= 0 ? abreviar(valoresSerie[Number(y.slice(1))], 32) : nomeColuna(y));
+  const cores = iserie >= 0 ? SERIES_CATEGORIA_CORES : SERIES_CORES;
+
+  let rows: Record<string, string | number | null>[];
+  if (iserie >= 0) {
+    const porX = new Map<string, Record<string, string | number | null>>();
+    for (const linha of dados) {
+      const x = String(linha[ix] ?? "—");
+      if (!porX.has(x)) porX.set(x, { [grafico.x]: x });
+      const v = linha[iys[0]];
+      porX.get(x)![`s${valoresSerie.indexOf(String(linha[iserie] ?? "—"))}`] = typeof v === "number" ? v : null;
+    }
+    rows = [...porX.values()];
+  } else {
+    rows = linhas.map((linha) => {
+      const row: Record<string, string | number | null> = { [grafico.x]: String(linha[ix] ?? "—") };
+      grafico.y.forEach((y, k) => {
+        const v = linha[iys[k]];
+        row[y] = typeof v === "number" ? v : null;
+      });
+      return row;
     });
-    return row;
-  });
+  }
 
   const tick = { fontSize: ampliado ? 11 : 9, fill: GRAY_400 };
   const rotulo = (max: number) => (v: string) => (ampliado ? v : abreviar(v, max));
@@ -1256,17 +1278,24 @@ function GraficoCanvas({
       }
     />
   );
-  const legenda = grafico.y.length > 1 && <Legend wrapperStyle={{ fontSize: ampliado ? 11 : 10, color: GRAY_600 }} />;
-  const nota =
-    dados.length > rows.length ? (
-      <div style={{ fontSize: 10, color: GRAY_400, marginTop: 2 }}>
-        Mostrando {rows.length} de {dados.length} itens
-      </div>
-    ) : null;
+  // Muitas séries (uma por curso) não cabem na legenda do painel estreito: ela aparece ao ampliar.
+  const legendaCompactaOculta = iserie >= 0 && !ampliado && ys.length > 3;
+  const legenda = ys.length > 1 && !legendaCompactaOculta && (
+    <Legend wrapperStyle={{ fontSize: ampliado ? 11 : 10, color: GRAY_600 }} />
+  );
+  const nota = legendaCompactaOculta ? (
+    <div style={{ fontSize: 10, color: GRAY_400, marginTop: 2 }}>{ys.length} séries: amplie para ver a legenda</div>
+  ) : iserie < 0 && dados.length > rows.length ? (
+    <div style={{ fontSize: 10, color: GRAY_400, marginTop: 2 }}>
+      Mostrando {rows.length} de {dados.length} itens
+    </div>
+  ) : null;
 
   if (tipo === "barra_horizontal") {
     // No painel estreito o nome vai acima de cada barra (usa toda a largura); ampliado, num eixo Y largo.
-    const altura = Math.max(ampliado ? 240 : 140, rows.length * 30 + 40);
+    // No painel, cada item tem o nome acima e uma barra por série: a altura cresce com o número de séries.
+    const alturaItem = ampliado ? 30 : ys.length > 1 ? 12 * ys.length + 22 : 30;
+    const altura = Math.max(ampliado ? 240 : 140, rows.length * alturaItem + 40);
     const rotuloAcima = (props: { x?: number | string; y?: number | string; value?: unknown }) => (
       <text x={Number(props.x)} y={Number(props.y) - 4} fontSize={9.5} fill={GRAY_600}>
         {abreviar(String(props.value ?? ""), 40)}
@@ -1294,8 +1323,8 @@ function GraficoCanvas({
             />
             {tooltip}
             {legenda}
-            {grafico.y.map((y, k) => (
-              <Bar key={y} dataKey={y} name={nomeColuna(y)} fill={SERIES_CORES[k]} radius={[0, 4, 4, 0]} maxBarSize={24} barSize={ampliado ? undefined : 10}>
+            {ys.map((y, k) => (
+              <Bar key={y} dataKey={y} name={nomeSerie(y)} fill={cores[k]} radius={[0, 4, 4, 0]} maxBarSize={24} barSize={ampliado ? undefined : 10}>
                 {!ampliado && k === 0 && <LabelList dataKey={grafico.x} content={rotuloAcima} />}
               </Bar>
             ))}
@@ -1317,13 +1346,13 @@ function GraficoCanvas({
             <YAxis tick={tick} axisLine={false} tickLine={false} tickFormatter={fmtEixo} />
             {tooltip}
             {legenda}
-            {grafico.y.map((y, k) => (
+            {ys.map((y, k) => (
               <Line
                 key={y}
                 type="monotone"
                 dataKey={y}
-                name={nomeColuna(y)}
-                stroke={SERIES_CORES[k]}
+                name={nomeSerie(y)}
+                stroke={cores[k]}
                 strokeWidth={2}
                 dot={rows.length <= 12 ? { r: 4 } : false}
                 activeDot={{ r: 5 }}
@@ -1349,8 +1378,8 @@ function GraficoCanvas({
             <YAxis tick={tick} axisLine={false} tickLine={false} tickFormatter={fmtEixo} />
             {tooltip}
             {legenda}
-            {grafico.y.map((y, k) => (
-              <Bar key={y} dataKey={y} name={nomeColuna(y)} fill={SERIES_CORES[k]} radius={[4, 4, 0, 0]} maxBarSize={ampliado ? 36 : 22} />
+            {ys.map((y, k) => (
+              <Bar key={y} dataKey={y} name={nomeSerie(y)} fill={cores[k]} radius={[4, 4, 0, 0]} maxBarSize={ampliado ? 36 : 22} />
             ))}
           </BarChart>
         )}

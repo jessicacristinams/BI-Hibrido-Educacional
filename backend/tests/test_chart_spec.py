@@ -101,3 +101,30 @@ def test_barra_vertical_com_nomes_longos_vira_horizontal():
 def test_barra_vertical_com_nomes_curtos_continua_vertical():
     spec = validar_grafico({"tipo": "barra", "x": "curso", "y": ["aprovados", "reprovados"]}, APROV_COLS, APROV)
     assert spec and spec.tipo == "barra"
+
+
+def test_taxas_em_porcentagem_dividem_o_eixo_mesmo_com_escalas_diferentes():
+    colunas = ["curso", "taxa_evasao_pct", "taxa_retencao_pct", "taxa_formados_pct"]
+    dados = [["ENGENHARIA CIVIL", 33.7, 4.2, 34.1], ["ENGENHARIA MECATRÔNICA", 60.3, 1.9, 37.8]]
+    sugestao = {"tipo": "barra_horizontal", "x": "curso", "y": colunas[1:], "titulo": "Taxas por curso"}
+    assert validar_grafico(sugestao, colunas, dados) is not None
+
+
+def test_uma_linha_por_categoria_com_serie():
+    colunas = ["periodo_admissao", "curso", "ingressantes"]
+    dados = [[p, c, n] for p in ("2023.1", "2023.2") for c, n in (("CIVIL", 90), ("COMPUTACAO", 40))]
+    sugestao = {"tipo": "linha", "x": "periodo_admissao", "y": ["ingressantes"], "serie": "curso", "titulo": "t"}
+    assert validar_grafico(sugestao, colunas, dados).serie == "curso"
+    # sem sugestão do modelo, a regra fixa faz o mesmo
+    assert grafico_por_regra(colunas, dados).serie == "curso"
+
+
+@pytest.mark.parametrize(
+    "serie, y",
+    [("ingressantes", ["ingressantes"]), ("periodo_admissao", ["ingressantes"]), ("curso", ["ingressantes", "outro"])],
+)
+def test_serie_invalida_e_recusada(serie, y):
+    colunas = ["periodo_admissao", "curso", "ingressantes", "outro"]
+    dados = [["2023.1", "CIVIL", 90, 1], ["2023.2", "COMPUTACAO", 40, 2]]
+    sugestao = {"tipo": "linha", "x": "periodo_admissao", "y": y, "serie": serie, "titulo": "t"}
+    assert validar_grafico(sugestao, colunas, dados) is None

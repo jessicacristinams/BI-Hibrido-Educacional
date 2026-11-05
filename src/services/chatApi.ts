@@ -12,6 +12,8 @@ export type Grafico = {
   tipo: "barra" | "barra_horizontal" | "linha";
   x: string;
   y: string[];
+  /** Coluna categórica que vira uma série por valor (ex.: uma linha por curso). */
+  serie?: string | null;
   titulo: string;
 };
 

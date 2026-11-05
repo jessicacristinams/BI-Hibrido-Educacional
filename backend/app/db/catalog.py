@@ -55,34 +55,59 @@ TABLE matriculas  -- uma linha por matrícula de um aluno em uma disciplina
   reprovado            INTEGER  -- 1 se REPROVADO
   media_final          REAL     -- nota final de 0 a 10 (pode ser NULL)
   total_faltas         REAL     -- total de faltas (pode ser NULL)
+  semestre             INTEGER  -- semestre do curso que o aluno cursava ao fazer a disciplina (1 = 1º semestre)
 """
 
 REGRAS_NEGOCIO = """\
 - Todos os dados são da Escola Politécnica (único polo).
 - Períodos letivos têm o formato 'AAAA.S' (ex.: '2023.1'); a comparação de texto respeita a ordem cronológica.
 - Situação do aluno: FORMADO > EVADIDO > RETIDO > ATIVO. RETIDO = aluno ativo que já passou do 13º semestre.
-- "Alunos ativos/evadidos/retidos/formados" sem período informado = alunos.situacao_atual.
-  Com período informado, use alunos_periodo.categoria no período pedido.
-- Taxa de evasão de um grupo (histórico todo, sem período) = alunos com evadiu = 1 ÷ total de alunos do grupo
-  (tabela alunos). Taxa de formação = alunos com formou = 1 ÷ total de alunos do grupo.
-- Taxa de evasão/retenção/atividade/formação EM UM PERÍODO (igual ao dashboard) = alunos_periodo com
-  categoria = 'EVADIDO' (ou 'RETIDO', 'ATIVO', 'FORMADO') naquele periodo_letivo ÷ TODOS os alunos de
-  alunos_periodo naquele periodo_letivo. Não use periodo_evasao/periodo_formacao para calcular taxas.
+- "Taxa", "proporção", "percentual", "índice" e "porcentagem" significam a mesma coisa (em %).
+
+Cursos:
+- Filtre curso com igualdade e o nome EXATO da lista em <valores> (ex.: curso = 'ENGENHARIA COMPUTACÃO').
+- Sinônimos: "Computação"/"Engenharia da Computação" = 'ENGENHARIA COMPUTACÃO'; "Elétrica"/"Engenharia
+  Elétrica" = 'ENGENHARIA ELETROTÉCNICA'; "Mecânica" = só 'ENGENHARIA MECÂNICA' (a 'ENGENHARIA MECÂNICA
+  INDUSTRIAL' só entra se o usuário disser "Industrial"); "Telecom" = 'ENGENHARIA TELECOMUNICAÇÕES';
+  "Automação"/"Controle e Automação" = 'ENGENHARIA CONTROLE E AUTOMAÇÃO'.
+
+Situação dos alunos (igual aos cards do dashboard):
+- SEM período informado (histórico todo, "hoje", "por curso"): use alunos.situacao_atual. Ex.: taxa de evasão
+  de um grupo = SUM(situacao_atual = 'EVADIDO') ÷ COUNT(*) do grupo; o mesmo para RETIDO, FORMADO e ATIVO.
+- Não use alunos.evadiu nem alunos.formou para taxas nem para totais: evadiu = 1 inclui alunos que evadiram e
+  depois voltaram (reintegração) e alguns até se formaram.
+- COM período informado: use alunos_periodo, que tem uma linha por aluno em cada período. Taxa de evasão
+  (ou retenção, atividade, formação) EM UM PERÍODO = SUM(categoria = 'EVADIDO') ÷ COUNT(*) naquele periodo_letivo.
+- Intervalo de períodos ("de 2018.1 a 2024.2", "por período"): uma linha por periodo_letivo (GROUP BY
+  periodo_letivo), com BETWEEN no intervalo pedido.
 - Numa taxa, o denominador é sempre o grupo inteiro: nunca filtre (WHERE) pela mesma condição do
-  numerador, senão a taxa dá 100%. Conte o numerador com SUM(condição) ou SUM(CASE WHEN ... END).
-- Taxa de aprovação de uma disciplina = SUM(aprovado) ÷ (SUM(aprovado) + SUM(reprovado));
-  taxa de reprovação = SUM(reprovado) ÷ (SUM(aprovado) + SUM(reprovado)).
+  numerador, senão a taxa dá 100%. Conte o numerador com SUM(condição).
+- Séries históricas e evolução por período (ativos, evadidos, retidos, formados/concluintes), iguais ao
+  gráfico "Séries Históricas": conte alunos_periodo por categoria em cada periodo_letivo com
+  SUM(categoria = 'FORMADO') etc. Formados por ano = o mesmo, agrupado por SUBSTR(periodo_letivo, 1, 4).
+- Tendência ("aumentou?", "diminuiu?", "antes e depois de 2020"): compare a MÉDIA por período (e a taxa), não o
+  total, porque as fases têm quantidades diferentes de períodos. Use CASE WHEN periodo_letivo < 'AAAA.1'.
+- Eventos de evasão (quando e como o aluno saiu): alunos.semestre_evasao ("em que semestre evadem",
+  "evadiram nos N primeiros semestres" = semestre_evasao <= N) e alunos.tipo_evasao ("tipo de saída",
+  "forma de saída"), sempre com evadiu = 1. alunos.semestre_formacao = "em quantos semestres se formam".
+- Ingressantes por período = alunos agrupados por periodo_admissao.
+
+Disciplinas:
+- Taxa de aprovação = SUM(aprovado) ÷ (SUM(aprovado) + SUM(reprovado)); taxa de reprovação =
+  SUM(reprovado) ÷ (SUM(aprovado) + SUM(reprovado)). Em rankings de TAXA, exija HAVING avaliados >= 30.
+- Rankings de média de nota ou de faltas (iguais aos do dashboard): sem mínimo de alunos, só com
+  HAVING COUNT(media_final) > 0 (ou COUNT(total_faltas) > 0).
+- Disciplina específica: filtre com igualdade no nome completo (disciplina_busca = 'FISICA 1'). Com LIKE '%...%'
+  entram disciplinas parecidas (ex.: 'TOPICOS ESPECIAIS DE FISICA 1'). "Cálculo 1" =
+  'CALCULO DIFERENCIAL E INTEGRAL 1'; "Cálculo 2" = 'CALCULO DIFERENCIAL E INTEGRAL 2'.
+- "Primeiro ano", "primeiros semestres", "início do curso" = matriculas.semestre <= 2 ("primeiro período" ou
+  "primeiro semestre" = semestre = 1). É o semestre do curso, NÃO um período letivo como 2023.1.
 - Médias de nota e de faltas consideram só valores não nulos (AVG já ignora NULL).
-- Séries históricas por período (ativos, evadidos, retidos, formados/concluintes por período), iguais ao
-  gráfico "Séries Históricas" do dashboard: conte alunos_periodo por categoria em cada periodo_letivo, com
-  SUM(categoria = 'FORMADO') etc. agrupado por periodo_letivo (assim períodos com zero também aparecem).
-  Não use alunos.periodo_formacao nem alunos.periodo_evasao para séries por período.
-- alunos.semestre_formacao / semestre_evasao servem para "em que semestre cursado os alunos se formam/evadem".
-- "Tipo de saída", "tipo de evasão", "forma de saída" ou "como os alunos saíram" = alunos.tipo_evasao
-  (preenchido para alunos com evadiu = 1). Os valores possíveis estão em <valores>.
-- Nomes de curso: o usuário pode escrever "Engenharia da Computação", mas o nome gravado é
-  'ENGENHARIA COMPUTACÃO'. Filtre pela palavra mais distintiva, sem "DA"/"DE"/"DO"
-  (ex.: curso_busca LIKE '%COMPUTACAO%', '%CIVIL%', '%MECATRONICA%').
+
+Conversa:
+- Só reaproveite filtros (curso, período) de perguntas anteriores quando a pergunta atual for um
+  acompanhamento ("e em 2023.2?", "e para Civil?", "mostre só os três primeiros"). Nesse caso, repita a
+  consulta anterior mudando apenas o que foi pedido. Uma pergunta nova não herda filtros.
 """
 
 

@@ -14,12 +14,26 @@ EXEMPLOS: list[tuple[str, str]] = [
     (
         "Qual foi a média da turma em Cálculo Diferencial e Integral 1 no período 2019.2?",
         "SELECT ROUND(AVG(media_final), 2) AS media_turma FROM matriculas"
-        " WHERE disciplina_busca LIKE '%CALCULO DIFERENCIAL E INTEGRAL 1%' AND periodo_letivo = '2019.2'",
+        " WHERE disciplina_busca = 'CALCULO DIFERENCIAL E INTEGRAL 1' AND periodo_letivo = '2019.2'",
     ),
     (
         "Quais cursos possuem maior taxa de evasão?",
-        "SELECT curso, COUNT(*) AS total_alunos, SUM(evadiu) AS evadidos,"
-        " ROUND(100.0 * SUM(evadiu) / COUNT(*), 1) AS taxa_evasao_pct"
+        "SELECT curso, COUNT(*) AS total_alunos, SUM(situacao_atual = 'EVADIDO') AS evadidos,"
+        " ROUND(100.0 * SUM(situacao_atual = 'EVADIDO') / COUNT(*), 1) AS taxa_evasao_pct"
+        " FROM alunos GROUP BY curso ORDER BY taxa_evasao_pct DESC",
+    ),
+    (
+        "Qual curso tem a maior proporção de formados?",
+        "SELECT curso, COUNT(*) AS total_alunos, SUM(situacao_atual = 'FORMADO') AS formados,"
+        " ROUND(100.0 * SUM(situacao_atual = 'FORMADO') / COUNT(*), 1) AS taxa_formados_pct"
+        " FROM alunos GROUP BY curso ORDER BY taxa_formados_pct DESC",
+    ),
+    (
+        "Compare evasão, retenção e formação entre os cursos.",
+        "SELECT curso, COUNT(*) AS total_alunos,"
+        " ROUND(100.0 * SUM(situacao_atual = 'EVADIDO') / COUNT(*), 1) AS taxa_evasao_pct,"
+        " ROUND(100.0 * SUM(situacao_atual = 'RETIDO') / COUNT(*), 1) AS taxa_retencao_pct,"
+        " ROUND(100.0 * SUM(situacao_atual = 'FORMADO') / COUNT(*), 1) AS taxa_formados_pct"
         " FROM alunos GROUP BY curso ORDER BY taxa_evasao_pct DESC",
     ),
     (
@@ -30,10 +44,67 @@ EXEMPLOS: list[tuple[str, str]] = [
         " GROUP BY curso ORDER BY taxa_evasao_pct DESC",
     ),
     (
+        "Qual a taxa de evasão de Engenharia Elétrica por período, de 2019.1 a 2023.2?",
+        "SELECT periodo_letivo, COUNT(*) AS total_alunos, SUM(categoria = 'EVADIDO') AS evadidos,"
+        " ROUND(100.0 * SUM(categoria = 'EVADIDO') / COUNT(*), 1) AS taxa_evasao_pct"
+        " FROM alunos_periodo WHERE curso = 'ENGENHARIA ELETROTÉCNICA'"
+        " AND periodo_letivo BETWEEN '2019.1' AND '2023.2' GROUP BY periodo_letivo ORDER BY periodo_letivo",
+    ),
+    (
         "Qual a taxa de retenção de Engenharia Civil em 2023.2?",
         "SELECT COUNT(*) AS total_alunos, SUM(categoria = 'RETIDO') AS retidos,"
         " ROUND(100.0 * SUM(categoria = 'RETIDO') / COUNT(*), 1) AS taxa_retencao_pct"
-        " FROM alunos_periodo WHERE curso_busca LIKE '%ENGENHARIA CIVIL%' AND periodo_letivo = '2023.2'",
+        " FROM alunos_periodo WHERE curso = 'ENGENHARIA CIVIL' AND periodo_letivo = '2023.2'",
+    ),
+    (
+        "A evasão diminuiu depois de 2018?",
+        "SELECT CASE WHEN periodo_letivo < '2018.1' THEN 'antes de 2018' ELSE 'a partir de 2018' END AS fase,"
+        " COUNT(DISTINCT periodo_letivo) AS periodos, SUM(categoria = 'EVADIDO') AS evadidos,"
+        " ROUND(1.0 * SUM(categoria = 'EVADIDO') / COUNT(DISTINCT periodo_letivo), 1) AS media_evadidos_por_periodo,"
+        " ROUND(100.0 * SUM(categoria = 'EVADIDO') / COUNT(*), 1) AS taxa_evasao_pct"
+        " FROM alunos_periodo GROUP BY fase ORDER BY MIN(periodo_letivo)",
+    ),
+    (
+        "Quantos alunos evadiram nos três primeiros semestres, por curso?",
+        "SELECT curso, COUNT(*) AS evadidos FROM alunos WHERE evadiu = 1 AND semestre_evasao <= 3"
+        " GROUP BY curso ORDER BY evadidos DESC",
+    ),
+    (
+        "Quais os tipos de saída mais comuns entre os evadidos de Engenharia da Computação?",
+        "SELECT tipo_evasao, COUNT(*) AS evadidos FROM alunos"
+        " WHERE evadiu = 1 AND curso = 'ENGENHARIA COMPUTACÃO'"
+        " GROUP BY tipo_evasao ORDER BY evadidos DESC",
+    ),
+    (
+        "Mostre a evolução dos concluintes.",
+        "SELECT periodo_letivo, SUM(categoria = 'FORMADO') AS formados FROM alunos_periodo"
+        " GROUP BY periodo_letivo ORDER BY periodo_letivo",
+    ),
+    (
+        "Quantos alunos se formaram por ano em Engenharia Civil?",
+        "SELECT SUBSTR(periodo_letivo, 1, 4) AS ano, SUM(categoria = 'FORMADO') AS formados FROM alunos_periodo"
+        " WHERE curso = 'ENGENHARIA CIVIL' GROUP BY ano ORDER BY ano",
+    ),
+    (
+        "Gráfico de evadidos de Engenharia Civil de 2020.1 a 2023.2",
+        "SELECT periodo_letivo, SUM(categoria = 'EVADIDO') AS evadidos FROM alunos_periodo"
+        " WHERE curso = 'ENGENHARIA CIVIL' AND periodo_letivo BETWEEN '2020.1' AND '2023.2'"
+        " GROUP BY periodo_letivo ORDER BY periodo_letivo",
+    ),
+    (
+        "Quantos alunos ativos tinha Engenharia Civil em 2022.2?",
+        "SELECT COUNT(*) AS alunos_ativos FROM alunos_periodo"
+        " WHERE curso = 'ENGENHARIA CIVIL' AND periodo_letivo = '2022.2' AND categoria = 'ATIVO'",
+    ),
+    (
+        "Quantos alunos estão retidos hoje em cada curso?",
+        "SELECT curso, COUNT(*) AS retidos FROM alunos WHERE situacao_atual = 'RETIDO'"
+        " GROUP BY curso ORDER BY retidos DESC",
+    ),
+    (
+        "Quantos alunos ingressaram por período em cada curso?",
+        "SELECT periodo_admissao, curso, COUNT(*) AS ingressantes FROM alunos"
+        " WHERE periodo_admissao IS NOT NULL GROUP BY periodo_admissao, curso ORDER BY periodo_admissao, curso",
     ),
     (
         "Quais disciplinas possuem maior taxa de reprovação?",
@@ -43,31 +114,23 @@ EXEMPLOS: list[tuple[str, str]] = [
         " ORDER BY taxa_reprovacao_pct DESC LIMIT 10",
     ),
     (
-        "Mostre a evolução dos concluintes.",
-        "SELECT periodo_letivo, SUM(categoria = 'FORMADO') AS formados FROM alunos_periodo"
-        " GROUP BY periodo_letivo ORDER BY periodo_letivo",
+        "Quais disciplinas do primeiro ano têm maior taxa de reprovação?",
+        "SELECT disciplina, SUM(aprovado) + SUM(reprovado) AS avaliados,"
+        " ROUND(100.0 * SUM(reprovado) / (SUM(aprovado) + SUM(reprovado)), 1) AS taxa_reprovacao_pct"
+        " FROM matriculas WHERE semestre <= 2 GROUP BY disciplina HAVING avaliados >= 30"
+        " ORDER BY taxa_reprovacao_pct DESC LIMIT 10",
     ),
     (
-        "Gráfico de evadidos de Engenharia Civil de 2020.1 a 2023.2",
-        "SELECT periodo_letivo, SUM(categoria = 'EVADIDO') AS evadidos FROM alunos_periodo"
-        " WHERE curso_busca LIKE '%ENGENHARIA CIVIL%' AND periodo_letivo BETWEEN '2020.1' AND '2023.2'"
-        " GROUP BY periodo_letivo ORDER BY periodo_letivo",
+        "Compare a taxa de reprovação de Física 1 entre os cursos.",
+        "SELECT curso, SUM(aprovado) + SUM(reprovado) AS avaliados,"
+        " ROUND(100.0 * SUM(reprovado) / (SUM(aprovado) + SUM(reprovado)), 1) AS taxa_reprovacao_pct"
+        " FROM matriculas WHERE disciplina_busca = 'FISICA 1' GROUP BY curso ORDER BY taxa_reprovacao_pct DESC",
     ),
     (
-        "Quantos alunos ativos tinha Engenharia Civil em 2022.2?",
-        "SELECT COUNT(*) AS alunos_ativos FROM alunos_periodo"
-        " WHERE curso_busca LIKE '%ENGENHARIA CIVIL%' AND periodo_letivo = '2022.2' AND categoria = 'ATIVO'",
-    ),
-    (
-        "Quais os tipos de saída mais comuns entre os evadidos de Engenharia da Computação?",
-        "SELECT tipo_evasao, COUNT(*) AS evadidos FROM alunos"
-        " WHERE evadiu = 1 AND curso_busca LIKE '%COMPUTACAO%'"
-        " GROUP BY tipo_evasao ORDER BY evadidos DESC",
-    ),
-    (
-        "Quantos alunos estão retidos hoje em cada curso?",
-        "SELECT curso, COUNT(*) AS retidos FROM alunos WHERE situacao_atual = 'RETIDO'"
-        " GROUP BY curso ORDER BY retidos DESC",
+        "Quais disciplinas têm a menor média final em Engenharia Elétrica?",
+        "SELECT disciplina, COUNT(media_final) AS notas, ROUND(AVG(media_final), 2) AS media_final"
+        " FROM matriculas WHERE curso = 'ENGENHARIA ELETROTÉCNICA' GROUP BY disciplina HAVING notas > 0"
+        " ORDER BY media_final ASC LIMIT 10",
     ),
 ]
 
@@ -90,6 +153,8 @@ Regras para o SQL:
 - Em taxas, traga também o numerador e o total (ex.: evadidos e total_alunos), para conferência.
 - Proteção de dados (LGPD): nunca devolva codigo_estudante nem use SELECT *. Para contar alunos, use
   COUNT(DISTINCT codigo_estudante). Pedidos de dados de alunos individuais são fora do escopo.
+- Em rankings de "maior/menor", traga todas as linhas ordenadas (ou LIMIT 10); só limite a N linhas
+  quando o usuário pedir ("os três primeiros" = LIMIT 3).
 
 Exemplos:
 {exemplos}
@@ -97,10 +162,20 @@ Exemplos:
 Responda APENAS com um JSON no formato:
 {{"relevante": true, "sql": "<consulta>"}}
 Antes de recusar, confira o schema, as regras e os valores: perguntas sobre cursos, períodos,
-situação dos alunos, evasão (inclusive tipo de saída), formação, disciplinas, notas e faltas SÃO
-respondíveis. Se, mesmo assim, a pergunta não puder ser respondida com esses dados (assunto fora
-do escopo, pedido para alterar o banco, conversa casual...), responda:
+situação dos alunos, evasão (inclusive tipo de saída e semestre), formação, ingressantes, disciplinas
+(inclusive do primeiro ano), notas e faltas SÃO respondíveis. Se, mesmo assim, a pergunta não puder ser
+respondida com esses dados, responda:
 {{"relevante": false, "sql": null, "motivo": "<explicação curta em português para o usuário>"}}
+O motivo deve dizer o porquê, conforme o caso:
+- dados de alunos individuais (códigos, nomes, listas de alunos): "Por proteção de dados (LGPD), não mostro
+  informações de alunos individuais; posso mostrar totais e taxas por curso, período ou disciplina."
+- pedido para alterar, apagar ou inserir dados: "O assistente só consulta os dados (acesso somente
+  leitura); não é possível alterar ou apagar registros."
+- causas e motivos ("por que os alunos evadem?"): "A base não registra os motivos da evasão (renda,
+  perfil, razões pessoais). Posso mostrar quando os alunos saem (semestre e período) e como saem (tipo
+  de saída)."
+- assunto fora do Sigadash (clima, conversa casual...): "Só respondo perguntas sobre os dados
+  acadêmicos do Sigadash (alunos, cursos, disciplinas, notas, evasão e formação)."
 """
 
 

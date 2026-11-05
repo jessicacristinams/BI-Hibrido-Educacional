@@ -1,6 +1,6 @@
 from app.core.config import Settings
 from app.services.answer_writer import SEM_RESULTADOS
-from app.services.chat_service import FORA_DO_ESCOPO
+from app.services.chat_service import SEM_CONSULTA_VALIDA, FORA_DO_ESCOPO
 from tests.conftest import FakeLLM
 
 
@@ -112,7 +112,7 @@ def test_grafico_sugerido_pelo_modelo(make_client):
     ])
     body = make_client(llm).post("/api/chat", json={"pergunta": "Matrículas por período em barras"}).json()
     assert body["resposta"] == "As matrículas variam por período."
-    assert body["grafico"] == {"tipo": "barra", "x": "periodo_letivo", "y": ["matriculas"], "titulo": "Matrículas"}
+    assert body["grafico"] == {"tipo": "barra", "x": "periodo_letivo", "y": ["matriculas"], "serie": None, "titulo": "Matrículas"}
     assert llm.chamadas[1]["json_mode"] is True
     assert "periodo_letivo (temporal)" in llm.chamadas[1]["messages"][0]["content"]
 
@@ -139,3 +139,25 @@ def test_valor_unico_sem_grafico(make_client):
 def test_variaveis_vazias_do_compose_viram_none(db_path):
     s = Settings(_env_file=None, openai_api_key="", openai_base_url="  ", database_path=db_path)
     assert s.openai_api_key is None and s.openai_base_url is None
+
+
+def test_desistencia_na_correcao_nao_mostra_o_erro_tecnico(make_client):
+    """Antes, o chat mostrava frases como "A coluna 'periodo_letivo' não existe na tabela 'alunos'"."""
+    llm = FakeLLM([
+        {"relevante": True, "sql": "SELECT periodo_letivo FROM alunos"},
+        {"relevante": False, "sql": None, "motivo": "A coluna 'periodo_letivo' não existe na tabela 'alunos'."},
+    ])
+    r = make_client(llm).post("/api/chat", json={"pergunta": "Taxa de evasão por período?"})
+    assert r.status_code == 200
+    assert r.json()["resposta"] == SEM_CONSULTA_VALIDA
+
+
+def test_redator_recebe_maior_e_menor_calculados(make_client):
+    llm = FakeLLM([
+        {"relevante": True, "sql": "SELECT curso, COUNT(*) AS total FROM alunos GROUP BY curso ORDER BY total"},
+        "ok",
+    ])
+    make_client(llm).post("/api/chat", json={"pergunta": "Qual curso tem mais alunos?"})
+    conteudo = llm.chamadas[1]["messages"][0]["content"]
+    assert "Destaques (calculados sobre todas as linhas)" in conteudo
+    assert "- total: maior = " in conteudo

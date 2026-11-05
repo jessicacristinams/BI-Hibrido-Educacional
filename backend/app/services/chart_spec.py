@@ -16,6 +16,7 @@ from app.schemas.chat import GraficoSpec
 MAX_CATEGORIAS_REGRA = 15  # a regra fixa só desenha barras com até 15 categorias
 RAZAO_MAX_ESCALA = 10      # séries juntas precisam ter ordem de grandeza parecida (um único eixo Y)
 ROTULO_LONGO = 14          # categorias com rótulo maior que isso viram barra horizontal
+MAX_SERIES = 10            # uma série por valor da coluna `serie` (ex.: uma linha por curso)
 
 _PERIODO_RE = re.compile(r"^\d{4}\.\d$")
 _COLUNAS_ID = {"id", "codigo_estudante"}
@@ -49,7 +50,13 @@ def _maximo_abs(colunas: list[str], dados: list[list[Any]], nome: str) -> float:
     return max((abs(v) for v in vals), default=0.0)
 
 
+def _percentual(nome: str) -> bool:
+    return bool(re.search(r"taxa|pct|percent|proporc", nome.lower()))
+
+
 def _mesma_escala(colunas: list[str], dados: list[list[Any]], ys: list[str]) -> bool:
+    if all(_percentual(y) for y in ys):  # taxas em % dividem o mesmo eixo (0 a 100), mesmo que pequenas
+        return True
     maximos = [_maximo_abs(colunas, dados, y) for y in ys]
     if max(maximos) == 0:
         return True
@@ -76,10 +83,22 @@ def validar_grafico(sugestao: Any, colunas: list[str], dados: list[list[Any]]) -
         return None
     if len(spec.y) > 1 and not _mesma_escala(colunas, dados, spec.y):
         return None
+    if spec.serie is not None and not _serie_valida(spec, tipos, colunas, dados):
+        return None
     if spec.tipo == "barra" and tipos[spec.x] == "categorica" and _rotulo_longo(colunas, dados, spec.x):
         # nomes longos (cursos, disciplinas) se sobrepõem no eixo X de barras verticais
         spec = spec.model_copy(update={"tipo": "barra_horizontal"})
     return spec
+
+
+def _serie_valida(spec: GraficoSpec, tipos: dict[str, str], colunas: list[str], dados: list[list[Any]]) -> bool:
+    return (
+        spec.tipo in ("linha", "barra")
+        and len(spec.y) == 1
+        and tipos.get(spec.serie) == "categorica"
+        and spec.serie != spec.x
+        and 1 < len(set(_valores(dados, colunas.index(spec.serie)))) <= MAX_SERIES
+    )
 
 
 def _rotulo_longo(colunas: list[str], dados: list[list[Any]], coluna: str) -> bool:
@@ -113,10 +132,14 @@ def grafico_por_regra(colunas: list[str], dados: list[list[Any]]) -> GraficoSpec
     y = _metrica_principal(numericas)
 
     temporal = next((c for c in colunas if tipos[c] == "temporal"), None)
+    categorica = next((c for c in colunas if tipos[c] == "categorica"), None)
+    if temporal and categorica:
+        # período + categoria + número (ex.: ingressantes por período e curso): uma linha por categoria
+        spec = GraficoSpec(tipo="linha", x=temporal, y=[y], serie=categorica, titulo=_titulo(y, temporal))
+        return spec if _serie_valida(spec, tipos, colunas, dados) else None
     if temporal:
         return GraficoSpec(tipo="linha", x=temporal, y=[y], titulo=_titulo(y, temporal))
 
-    categorica = next((c for c in colunas if tipos[c] == "categorica"), None)
     if categorica and len(dados) <= MAX_CATEGORIAS_REGRA:
         tipo = "barra_horizontal" if _rotulo_longo(colunas, dados, categorica) else "barra"
         return GraficoSpec(tipo=tipo, x=categorica, y=[y], titulo=_titulo(y, categorica))

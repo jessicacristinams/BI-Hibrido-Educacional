@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     supressao_k: int = Field(default=1, ge=1)
 
     # Limites da consulta
-    max_linhas_resposta: int = 200   # linhas devolvidas ao frontend
+    max_linhas_resposta: int = 500   # linhas devolvidas ao frontend (ex.: 33 períodos × 10 cursos)
     max_linhas_contexto: int = 40    # linhas enviadas ao LLM para redigir a resposta
     sql_timeout_s: float = 5.0
     max_tentativas_sql: int = 2      # gera + 1 correção a partir do erro

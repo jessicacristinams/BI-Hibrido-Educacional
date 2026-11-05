@@ -35,6 +35,8 @@ class GraficoSpec(BaseModel):
     tipo: Literal["barra", "barra_horizontal", "linha"]
     x: str
     y: list[str] = Field(min_length=1, max_length=3)
+    # Coluna categórica que vira uma série por valor (ex.: uma linha por curso); exige um único y.
+    serie: str | None = None
     titulo: str = Field(default="", max_length=100)
 
 

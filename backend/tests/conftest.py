@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import sys
 import json
 from pathlib import Path
 
@@ -20,6 +21,7 @@ ALUNOS_FICTICIOS = 300
 def load_script(nome: str):
     spec = importlib.util.spec_from_file_location(nome, SCRIPTS / f"{nome}.py")
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[nome] = mod  # dataclasses dos scripts precisam do módulo registrado
     spec.loader.exec_module(mod)
     return mod
 

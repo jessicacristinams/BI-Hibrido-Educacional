@@ -131,7 +131,7 @@ reaproveitando a mineração de `python/` (painéis e chat seguem as mesmas regr
 |------------------|----------------------------|--------------------|
 | `alunos`         | 1 linha por aluno          | `situacao_atual`, `evadiu`/`tipo_evasao`, `formou`/`periodo_formacao` |
 | `alunos_periodo` | 1 linha por aluno×período  | `categoria` (ATIVO/EVADIDO/RETIDO/FORMADO), `semestre` |
-| `matriculas`     | 1 linha por matrícula      | `disciplina`, `media_final`, `total_faltas`, `aprovado`, `reprovado` |
+| `matriculas`     | 1 linha por matrícula      | `disciplina`, `media_final`, `total_faltas`, `aprovado`, `reprovado`, `semestre` (semestre do curso do aluno naquela matrícula) |
 | `painel_disciplinas` | curso × disciplina × período (só somas e contagens) | usada pelo Painel de Disciplinas; o chat não a consulta |
 
 As colunas `curso_busca` e `disciplina_busca` guardam o nome em maiúsculas e sem
@@ -148,6 +148,23 @@ ao modelo fica em `app/db/catalog.py`; os exemplos few-shot em
 3. Timeout por consulta (`SQL_TIMEOUT_S`) e limite de linhas devolvidas.
 4. LGPD: a resposta não pode trazer `codigo_estudante` (só `COUNT(DISTINCT ...)`)
    nem usar `SELECT *`; o modelo recebe o erro e refaz a consulta agregando.
+
+## Avaliação do chat
+
+`scripts/avaliar_chat.py` mede se o chat responde com os números certos. São 28 perguntas
+(evasão, retenção, disciplinas, comparações, acompanhamento e limites), escritas de outro jeito que
+os exemplos do prompt, para medir se o chat entende perguntas parecidas. Cada uma tem uma consulta de
+referência conferida com o dashboard. O script faz a pergunta ao modelo configurado no `.env`, roda a
+referência no mesmo banco e compara os números (nomes e ordem das colunas podem variar).
+
+```bash
+# a partir da raiz, com o .venv ativo e o Ollama (ou a OpenAI) configurado em backend/.env
+python backend/scripts/avaliar_chat.py                 # todas as perguntas
+python backend/scripts/avaliar_chat.py --casos 1 6 22  # só algumas
+```
+
+Ao final, mostra quantas acertou e grava `avaliacao_chat.md` com a pergunta, a resposta, o SQL
+gerado e, nos erros, o SQL de referência. Com um modelo local sem GPU, leva alguns minutos.
 
 ## Estrutura
 
@@ -170,6 +187,7 @@ backend/
     services/llm.py            cliente OpenAI atrás de um protocolo (fácil de trocar)
   scripts/build_database.py CSV → data/sigadash.db (sem CSV real: dados fictícios)
   scripts/gerar_dados_sinteticos.py  alunos fictícios no formato do CSV
+  scripts/avaliar_chat.py   mede o acerto do chat contra consultas de referência
   tests/                    pytest (LLM falso)
 ```
 
