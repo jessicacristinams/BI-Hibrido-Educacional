@@ -21,8 +21,8 @@ av = load_script("avaliar_chat")
         (["curso", "t"], [["CIVIL", 33.66], ["MECATRONICA", 60.31]], True),
         # número errado
         (["curso", "t"], [["CIVIL", 41.2], ["MECATRONICA", 69.9]], False),
-        # faltou um curso
-        (["curso", "t"], [["CIVIL", 33.7]], False),
+        # faltou o primeiro curso do ranking
+        (["curso", "t"], [["MECATRONICA", 60.3]], False),
         # cursos trocados
         (["curso", "t"], [["CIVIL", 60.3], ["MECATRONICA", 33.7]], False),
     ],
@@ -30,6 +30,17 @@ av = load_script("avaliar_chat")
 def test_comparar(cols, dados, esperado):
     ref_cols, ref = ["curso", "taxa"], [["CIVIL", 33.7], ["MECATRONICA", 60.3]]
     assert av.comparar(ref_cols, ref, cols, dados)[0] is esperado
+
+
+def test_comparar_aceita_o_comeco_do_ranking():
+    ref_cols, ref = ["curso", "taxa"], [["MECATRONICA", 60.3], ["CIVIL", 33.7]]
+    assert av.comparar(ref_cols, ref, ["curso", "taxa"], [["MECATRONICA", 60.3]])[0]
+    assert not av.comparar(ref_cols, ref, ["curso", "taxa"], [["CIVIL", 33.7]])[0]
+
+
+def test_comparar_vazio_equivale_a_referencia_toda_zero():
+    assert av.comparar(["ano", "formados"], [["2015", 0], ["2016", 0]], ["ano", "formados"], [])[0]
+    assert not av.comparar(["ano", "formados"], [["2015", 0], ["2016", 3]], ["ano", "formados"], [])[0]
 
 
 def test_comparar_sem_rotulos_usa_a_ordem():

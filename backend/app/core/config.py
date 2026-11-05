@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     openai_base_url: str | None = None  # opcional: provedor compatível com a API da OpenAI
     llm_model: str = "gpt-4o-mini"
     llm_timeout_s: float = 60.0
+    # Ollama: tamanho do contexto (tokens). O padrão do Ollama (4096) corta o prompt do chat, que tem
+    # ~5 mil tokens com a descrição do banco e os exemplos; aí o modelo inventa colunas.
+    llm_contexto: int = 8192
 
     # Banco consultado pelos painéis e pelo chat (gerado por scripts/build_database.py)
     database_path: Path = BACKEND_DIR / "data" / "sigadash.db"

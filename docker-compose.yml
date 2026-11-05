@@ -35,6 +35,7 @@ services:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       LLM_TIMEOUT_S: ${LLM_TIMEOUT_S:-180}
+      LLM_CONTEXTO: ${LLM_CONTEXTO:-8192}
       SUPRESSAO_K: ${SUPRESSAO_K:-1}
     extra_hosts:
       # permite usar um Ollama instalado direto no servidor: OPENAI_BASE_URL=http://host.docker.internal:11434/v1
@@ -51,6 +52,10 @@ services:
     image: ollama/ollama:latest
     profiles: ["ollama"]
     restart: unless-stopped
+    environment:
+      # 2 "vagas": o prompt do SQL e o da resposta ficam em memória, e as próximas perguntas são mais rápidas
+      OLLAMA_NUM_PARALLEL: 2
+      OLLAMA_KEEP_ALIVE: 24h
     volumes:
       - ollama:/root/.ollama
 

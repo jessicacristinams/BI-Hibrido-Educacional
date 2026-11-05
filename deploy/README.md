@@ -37,6 +37,7 @@ nano .env        # ou outro editor
 | `CHAT_LIMITE_POR_MINUTO` | perguntas por minuto por computador (IP) | `10` |
 | `CHAT_RAJADA` | perguntas seguidas aceitas antes de aplicar o limite | `5` |
 | `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `LLM_MODEL`, `LLM_TIMEOUT_S` | modelo de linguagem (abaixo) | OpenAI `gpt-4o-mini` |
+| `LLM_CONTEXTO` | com Ollama: tamanho do contexto em tokens (o prompt do chat tem ~5 mil) | `8192` |
 | `SUPRESSAO_K` | opcional (LGPD): com *k* > 1, os painéis ocultam números de grupos com menos de *k* pessoas | `1` (valores reais) |
 
 **Dados:** o CSV real não está no repositório. Copie-o para `dados/df_tabela_final.csv` (e a

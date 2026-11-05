@@ -149,6 +149,18 @@ ao modelo fica em `app/db/catalog.py`; os exemplos few-shot em
 4. LGPD: a resposta não pode trazer `codigo_estudante` (só `COUNT(DISTINCT ...)`)
    nem usar `SELECT *`; o modelo recebe o erro e refaz a consulta agregando.
 
+## Ollama: contexto do modelo
+
+O prompt que gera o SQL tem cerca de 5 mil tokens (descrição do banco, regras e exemplos). Pela API
+compatível com a OpenAI (`/v1`), o Ollama usa o contexto padrão de 4.096 tokens e **corta o começo do
+prompt**: o modelo perde a descrição das tabelas e inventa colunas (ex.: "a coluna 'categoria' não
+existe na tabela 'alunos'"). Por isso, quando `OPENAI_BASE_URL` aponta para o Ollama (porta 11434), o
+backend usa a API nativa (`/api/chat`) com `num_ctx = LLM_CONTEXTO` (padrão 8192). Nada muda no `.env`.
+
+Para respostas mais rápidas, inicie o Ollama com `OLLAMA_NUM_PARALLEL=2`: o prompt do SQL e o da
+resposta ficam em memória, e a partir da segunda pergunta o modelo só lê o texto novo (num teste sem
+GPU, a geração do SQL caiu de ~165 s para ~30 s).
+
 ## Avaliação do chat
 
 `scripts/avaliar_chat.py` mede se o chat responde com os números certos. São 28 perguntas

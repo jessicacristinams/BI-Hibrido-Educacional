@@ -235,6 +235,13 @@ def comparar(ref_cols: list[str], ref: list[list[Any]], cols: list[str], dados: 
     em comum, pela ordem. Cada coluna numérica da referência precisa existir no chat com os mesmos
     valores (tolerância de arredondamento). Colunas a mais no chat são aceitas.
     """
+    if not dados and all(not _numero(v) or v == 0 for linha in ref for v in linha):
+        return True, "nenhum registro (a referência é toda zero)"
+    if 0 < len(dados) < len(ref):
+        # "Qual curso tem a maior taxa?" respondido só com o primeiro: certo se for o começo do ranking
+        ok, _ = comparar(ref_cols, ref[: len(dados)], cols, dados)
+        if ok:
+            return True, f"mostrou só as {len(dados)} primeira(s) linha(s) do ranking, com os números certos"
     if len(dados) != len(ref):
         return False, f"{len(dados)} linha(s) no chat, {len(ref)} na referência"
     if not ref:
