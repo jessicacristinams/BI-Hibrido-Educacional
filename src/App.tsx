@@ -70,28 +70,28 @@ const CAT_META: Record<
     border: "#bfdbfe",
   },
   EVADIDO: {
-    indicador: "Evasão",
-    total: "Total de Evasão",
-    taxa: "Taxa de Evasão",
-    serie: "Evadidos",
+    indicador: "Alunos Evadidos",
+    total: "Total de Alunos Evadidos",
+    taxa: "Taxa de Alunos Evadidos",
+    serie: "Alunos Evadidos",
     color: RED,
     bg: RED_LIGHT,
     border: "#fecaca",
   },
   RETIDO: {
-    indicador: "Retenção",
-    total: "Total de Retenção",
-    taxa: "Taxa de Retenção",
-    serie: "Retidos",
+    indicador: "Alunos Retidos",
+    total: "Total de Alunos Retidos",
+    taxa: "Taxa de Alunos Retidos",
+    serie: "Alunos Retidos",
     color: YELLOW,
     bg: YELLOW_LIGHT,
     border: "#fde68a",
   },
   FORMADO: {
-    indicador: "Formados",
-    total: "Total de Formados",
-    taxa: "Taxa de Formados",
-    serie: "Formados",
+    indicador: "Alunos Formados",
+    total: "Total de Alunos Formados",
+    taxa: "Taxa de Alunos Formados",
+    serie: "Alunos Formados",
     color: GREEN,
     bg: GREEN_LIGHT,
     border: "#a7f3d0",
@@ -811,7 +811,7 @@ function AlunasPanel({ filtros }: { filtros: Filtros }) {
   const mostraFormacao = view.categoriasVisiveis.includes("FORMADO");
   const nGraficos = (mostraEvasao ? 2 : 0) + (mostraFormacao ? 1 : 0);
   const oculto = `Oculto por privacidade: recorte com menos de ${view.limiteSupressao} alunos.`;
-  const semEvasao = view.suprimido ? oculto : "Sem evasões registradas para os filtros atuais.";
+  const semEvasao = view.suprimido ? oculto : "Sem alunos evadidos para os filtros atuais.";
 
   return (
     <div style={{ ...PANEL_STYLE, opacity: carregando ? 0.6 : 1 }}>
@@ -878,10 +878,10 @@ function AlunasPanel({ filtros }: { filtros: Filtros }) {
         >
           {mostraEvasao && (
             <Card>
-              <CardTitle>Evasão por Semestre Cursado</CardTitle>
+              <CardTitle>Alunos Evadidos por Semestre Cursado</CardTitle>
               <SemestrePorPeriodoChart
                 data={view.evasaoPorSemestre}
-                nome="Evadidos"
+                nome="Alunos Evadidos"
                 cores={[RED, "#f87171", "#fca5a5"]}
                 vazio={semEvasao}
               />
@@ -890,19 +890,19 @@ function AlunasPanel({ filtros }: { filtros: Filtros }) {
 
           {mostraFormacao && (
             <Card>
-              <CardTitle>Formação por Semestre Cursado</CardTitle>
+              <CardTitle>Alunos Formados por Semestre Cursado</CardTitle>
               <SemestrePorPeriodoChart
                 data={view.formacaoPorSemestre}
-                nome="Formados"
+                nome="Alunos Formados"
                 cores={["#059669", GREEN, "#6ee7b7"]}
-                vazio={view.suprimido ? oculto : "Sem formaturas registradas para os filtros atuais."}
+                vazio={view.suprimido ? oculto : "Sem alunos formados para os filtros atuais."}
               />
             </Card>
           )}
 
           {mostraEvasao && (
             <Card>
-              <CardTitle>Evasão pelo Tipo de Saída</CardTitle>
+              <CardTitle>Alunos Evadidos por Tipo de Saída</CardTitle>
               {view.evasaoPorTipoSaida.length === 0 ? (
                 <EmptyChart>{semEvasao}</EmptyChart>
               ) : (
@@ -918,7 +918,7 @@ function AlunasPanel({ filtros }: { filtros: Filtros }) {
                       tickLine={false}
                       width={148}
                     />
-                    <Tooltip {...TT} formatter={fmtTooltip("Evadidos")} />
+                    <Tooltip {...TT} formatter={fmtTooltip("Alunos Evadidos")} />
                     <Bar dataKey="valor" fill={RED} radius={[0, 4, 4, 0]} maxBarSize={24} label={<HBarLabel />} />
                   </BarChart>
                 </ResponsiveContainer>

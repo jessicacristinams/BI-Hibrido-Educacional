@@ -70,7 +70,7 @@ Filtros: **Polo**, **Período Letivo** (seleção múltipla), **Curso** e **Indi
   completo*. Com períodos marcados, vale a situação do período **mais recente
   dentre os marcados** (ex.: Aluno X em {2022.1, 2022.2} → ATIVO; em
   {2022.1, 2022.2, 2023.1} → RETIDO).
-- **Indicador (multi-seleção)** (Alunos Ativos · Evasão · Retenção · Formados) —
+- **Indicador (multi-seleção)** (Alunos Ativos · Alunos Evadidos · Alunos Retidos · Alunos Formados) —
   com nenhum marcado, valem os quatro ("Todos os Indicadores"). Com indicadores
   marcados, aparecem só os pares de KPIs (total + taxa) dessas categorias; a
   série histórica mostra só as linhas delas; os gráficos de evasão aparecem
