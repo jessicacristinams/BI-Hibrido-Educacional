@@ -150,7 +150,7 @@ def gerar(n_alunos: int = 2000, semente: int = 42) -> list[list[str]]:
 
 
 # Previsão fictícia: mesmo período-base e período-alvo do notebook de previsão.
-PREVISAO_BASE, PREVISAO_ALVO = "2024.2", "2026.1"
+PREVISAO_BASE, PREVISAO_ALVO = "2024.2", "2025.1"
 PERIODOS_INGRESSO = {"2023.1", "2023.2", "2024.1", "2024.2"}  # média de ingressantes, como no notebook
 COLUNAS_PREVISAO = ["NM_PROGR_FORM", "periodo_base", "periodo_alvo", "situacao", "quantidade_projetada", "proporcao_projetada"]
 SITUACOES_TERMINAIS = {"FORMADO"} | {t for t, _ in TIPOS_EVASAO}

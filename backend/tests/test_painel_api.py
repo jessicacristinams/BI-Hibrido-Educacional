@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from app.core.config import Settings
-from tests.conftest import FakeLLM
+from tests.conftest import FakeLLM, load_script
 
 
 @pytest.fixture
@@ -243,8 +243,31 @@ def test_build_sem_csv_real_usa_dados_sinteticos(tmp_path, monkeypatch):
     assert (tmp_path / "sintetico.csv").exists()
     con = sqlite3.connect(out)
     assert dict(con.execute("SELECT chave, valor FROM metadados").fetchall())["origem_dados"] == "sintetico"
-    assert con.execute("SELECT COUNT(*) FROM alunos").fetchone()[0] == 2000
+    # 2.000 alunos fictícios, menos os que só têm registros depois de 2024.2 (períodos cortados)
+    linhas = load_script("gerar_dados_sinteticos").ler_linhas(tmp_path / "sintetico.csv")
+    ate_2024 = {linha[0] for linha in linhas if linha[7] <= "2024.2"}
+    assert con.execute("SELECT COUNT(*) FROM alunos").fetchone()[0] == len(ate_2024) < 2000
     # com os dados fictícios vem também a previsão fictícia
     assert (tmp_path / "previsao_sintetica.csv").exists()
     assert con.execute("SELECT COUNT(DISTINCT curso) FROM previsao").fetchone()[0] == 10
+    con.close()
+
+
+# ── Corte dos períodos incompletos (2025.1 e 2025.2) ─────────────────────────
+
+
+def test_banco_vai_ate_2024_2(client, db):
+    for tabela in ("alunos_periodo", "matriculas", "painel_disciplinas"):
+        (maximo,) = db.execute(f"SELECT MAX(periodo_letivo) FROM {tabela}").fetchone()
+        assert maximo == "2024.2", tabela
+    body = client.get("/api/painel/filtros").json()
+    assert body["alunos"]["periodos"][-1] == body["disciplinas"]["periodos"][-1] == "2024.2"
+    assert dict(db.execute("SELECT chave, valor FROM metadados").fetchall())["ultimo_periodo"] == "2024.2"
+
+
+def test_todos_os_periodos_mantem_2025(amostra_csv, tmp_path):
+    out = tmp_path / "completo.db"
+    load_script("build_database").build(amostra_csv, out, origem="sintetico", ate=None)
+    con = sqlite3.connect(out)
+    assert con.execute("SELECT MAX(periodo_letivo) FROM alunos_periodo").fetchone()[0] == "2025.2"
     con.close()

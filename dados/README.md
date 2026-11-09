@@ -26,6 +26,13 @@ O dashboard mostra a linha do curso escolhido ou, com "Todos os cursos", a soma 
 porcentagens recalculadas sobre o total). Para atualizar a previsão real, substitua o arquivo (mesmas
 colunas) e gere o banco de novo. Sem ele, a seção de previsão fica vazia.
 
+## Períodos carregados
+
+O banco vai até **2024.2**: os registros de 2025.1 e 2025.2 estão incompletos no CSV e são descartados
+pelo `build_database.py` antes da classificação dos alunos (a "situação atual" de cada aluno é a de
+2024.2). Painéis e chat usam o mesmo recorte. Para carregar tudo, use `--todos-os-periodos`; para outro
+limite, `--ate AAAA.S`. A previsão aparece como o semestre seguinte ao período-base (2025.1).
+
 Com os dados fictícios, o dashboard mostra o selo **"Dados sintéticos (demonstração)"**.
 Os números não representam a instituição: servem para rodar e avaliar o sistema.
 

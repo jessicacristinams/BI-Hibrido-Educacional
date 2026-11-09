@@ -54,6 +54,9 @@ from disciplinas_mining import SITUACOES_APROVADO, SITUACOES_REPROVADO  # noqa: 
 DEFAULT_CSV = ROOT / "dados" / "df_tabela_final.csv"
 DEFAULT_SINTETICO = ROOT / "dados" / "df_tabela_sintetica.csv"
 DEFAULT_OUT = ROOT / "backend" / "data" / "sigadash.db"
+# Último período carregado: 2025.1 e 2025.2 estão incompletos no CSV e ficam de fora do banco
+# (painéis e chat consideram os dados até este período). --todos-os-periodos desliga o corte.
+ULTIMO_PERIODO = "2024.2"
 DEFAULT_PREVISAO = ROOT / "dados" / "previsao" / "resumo_projetado_todos_os_cursos.csv"
 DEFAULT_PREVISAO_SINTETICA = ROOT / "dados" / "previsao" / "resumo_projetado_sintetico.csv"
 
@@ -240,10 +243,31 @@ def _rows_previsao(path: Path | None) -> list[tuple]:
     ]
 
 
-def build(csv_path: Path, out_path: Path, origem: str = "real", previsao_csv: Path | None = None) -> None:
+def _ate_periodo(df: pd.DataFrame, ate: str) -> pd.DataFrame:
+    """Descarta os registros de períodos posteriores a `ate` (antes da mineração: a situação
+    "atual" de cada aluno passa a ser a do último período mantido)."""
+    limite = parse_period(ate)
+    if limite is None:
+        raise ValueError(f"Período inválido: {ate!r} (use AAAA.S, ex.: 2024.2)")
+    manter = df[COL_PERIODO].map(lambda p: (pp := parse_period(p)) is None or pp <= limite)
+    removidas = int((~manter).sum())
+    if removidas:
+        print(f"• Períodos posteriores a {ate} descartados: {removidas:,} linhas")
+    return df[manter].copy()
+
+
+def build(
+    csv_path: Path,
+    out_path: Path,
+    origem: str = "real",
+    previsao_csv: Path | None = None,
+    ate: str | None = ULTIMO_PERIODO,
+) -> None:
     t0 = time.perf_counter()
     df = load_csv(csv_path)
     print(f"• CSV lido: {len(df):,} linhas")
+    if ate:
+        df = _ate_periodo(df, ate)
 
     alunos = mine_alunos(df)
     print("• Mineração de alunos concluída")
@@ -282,7 +306,11 @@ def build(csv_path: Path, out_path: Path, origem: str = "real", previsao_csv: Pa
         con.execute("CREATE TABLE metadados (chave TEXT PRIMARY KEY, valor TEXT NOT NULL)")
         con.executemany(
             "INSERT INTO metadados VALUES (?, ?)",
-            [("origem_dados", origem), ("gerado_em", time.strftime("%Y-%m-%dT%H:%M:%S"))],
+            [
+                ("origem_dados", origem),
+                ("gerado_em", time.strftime("%Y-%m-%dT%H:%M:%S")),
+                ("ultimo_periodo", ate or "todos"),
+            ],
         )
         # Previsão do próximo semestre: resultados prontos do notebook, por curso e categoria.
         con.execute(
@@ -313,6 +341,8 @@ def main() -> int:
     ap.add_argument("--origem", choices=["real", "sintetico"], default="real", help="origem do --csv informado")
     ap.add_argument("--sintetico", action="store_true", help="usa dados fictícios mesmo se houver CSV real")
     ap.add_argument("--previsao", type=Path, default=None, help="resumo projetado do notebook (padrão conforme a origem)")
+    ap.add_argument("--ate", default=ULTIMO_PERIODO, help=f"último período carregado (padrão: {ULTIMO_PERIODO})")
+    ap.add_argument("--todos-os-periodos", action="store_true", help="carrega todos os períodos do CSV")
     args = ap.parse_args()
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -345,7 +375,7 @@ def main() -> int:
         previsao = DEFAULT_PREVISAO_SINTETICA
         if not previsao.exists():
             sinteticos.escrever_previsao(sinteticos.ler_linhas(csv_path), previsao)
-    build(csv_path, args.out, origem, previsao)
+    build(csv_path, args.out, origem, previsao, None if args.todos_os_periodos else args.ate)
     return 0
 
 

@@ -39,7 +39,7 @@ def test_todos_os_cursos_e_a_soma_dos_cursos(client, esperado):
     # porcentagem recalculada sobre o total somado (não é a média das porcentagens dos cursos)
     for item in body["itens"]:
         assert item["taxa"] == pytest.approx(100 * item["quantidade"] / body["totalProjetado"])
-    assert body["periodoAlvo"] == "2026.1"
+    assert body["periodoAlvo"] == "2025.1"  # semestre seguinte ao período-base 2024.2
     assert body["periodosBase"] == ["2024.2"]
 
 

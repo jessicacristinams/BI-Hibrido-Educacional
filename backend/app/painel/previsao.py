@@ -14,6 +14,11 @@ from pathlib import Path
 from app.painel.comum import CATEGORIAS, conexao, pct
 
 
+def _proximo_periodo(periodo: str) -> str:
+    ano, sem = periodo.split(".")
+    return f"{int(ano) + 1}.1" if int(sem) >= 2 else f"{ano}.2"
+
+
 @lru_cache(maxsize=32)
 def _previsao(path: Path, mtime: float, curso: str | None) -> dict | None:
     condicao, params = ("WHERE curso = ?", [curso]) if curso is not None else ("", [])
@@ -32,7 +37,9 @@ def _previsao(path: Path, mtime: float, curso: str | None) -> dict | None:
         por_categoria[categoria] += quantidade
     total = sum(por_categoria.values())
     return {
-        "periodoAlvo": max(r[2] for r in linhas),
+        # Próximo semestre após o período-base (o último exibido no dashboard), e não o rótulo do CSV:
+        # o notebook projetou "2026.1" porque pulou 2025.1/2025.2, que estão incompletos.
+        "periodoAlvo": _proximo_periodo(max(r[1] for r in linhas)),
         "periodosBase": sorted({r[1] for r in linhas}),
         "totalProjetado": total,
         "itens": [{"categoria": c, "quantidade": n, "taxa": pct(n, total)} for c, n in por_categoria.items()],
