@@ -294,24 +294,52 @@ function MultiSelectDropdown({
             flexDirection: "column",
           }}
         >
-          <button
-            type="button"
-            onClick={() => onChange([])}
-            style={{
-              background: value.length === 0 ? BLUE_LIGHT : "transparent",
-              color: value.length === 0 ? BLUE : GRAY_600,
-              border: "none",
-              borderBottom: `1px solid ${GRAY_100}`,
-              padding: "9px 12px",
-              fontSize: 12.5,
-              fontWeight: 600,
-              textAlign: "left",
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            {placeholderTodos}
-          </button>
+          {/* Cabeçalho: quantos itens estão marcados + botão que desmarca todos (volta ao placeholderTodos) */}
+<div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    borderBottom: `1px solid ${GRAY_100}`,
+    padding: "8px 12px",
+  }}
+>
+  <span
+    style={{
+      fontSize: 12,
+      color: GRAY_600,
+      fontWeight: 600,
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      minWidth: 0,
+    }}
+  >
+    {value.length === 0
+      ? placeholderTodos
+      : `${value.length} selecionado${value.length > 1 ? "s" : ""}`}
+  </span>
+  <button
+    type="button"
+    onClick={() => onChange([])}
+    disabled={value.length === 0}
+    style={{
+      background: "none",
+      border: "none",
+      padding: 0,
+      fontSize: 12,
+      fontWeight: 600,
+      color: value.length === 0 ? GRAY_400 : BLUE,
+      cursor: value.length === 0 ? "default" : "pointer",
+      fontFamily: "inherit",
+      whiteSpace: "nowrap",
+      flexShrink: 0,
+    }}
+  >
+    Limpar filtros
+  </button>
+</div>
           {pesquisavel && (
             <div style={{ padding: "8px 10px", borderBottom: `1px solid ${GRAY_100}` }}>
               <input
@@ -427,7 +455,7 @@ function HBarLabel({
 function InstitutionLogo() {
   return (
     <img
-      src="/logo-upe.png"
+      src="/logo-upe.svg"
       alt="UPE"
       style={{ height: 40, width: "auto", flexShrink: 0, display: "block" }}
     />
